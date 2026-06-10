@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LarpSint</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #071018;
+            --panel: #0f1f2f;
+            --text: #e9f4ff;
+            --muted: #82a8c4;
+            --accent: #41d8ff;
+            --shadow: rgba(0,0,0,0.35);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Inter, Arial, sans-serif;
+            background: radial-gradient(circle at center, rgba(204,31,45,0.12), transparent 22%),
+                        radial-gradient(circle at top left, rgba(204,31,45,0.08), transparent 16%),
+                        linear-gradient(180deg, #000000 0%, #02050d 100%);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            overflow: hidden;
+        }
+        .page {
+            position: relative;
+            width: min(900px, 100%);
+            padding: 2rem;
+            background: rgba(3,8,15,0.96);
+            border: 1px solid rgba(65,216,255,0.12);
+            border-radius: 34px;
+            box-shadow: 0 50px 120px rgba(0,0,0,0.75), inset 0 0 0 1px rgba(65,216,255,0.08);
+            transform: perspective(1400px) rotateX(2deg);
+            overflow: hidden;
+        }
+        .page::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(65,216,255,0.02) 0%, transparent 36%, transparent 64%, rgba(65,216,255,0.02) 100%),
+                        linear-gradient(180deg, rgba(65,216,255,0.03) 0%, transparent 15%, transparent 85%, rgba(65,216,255,0.03) 100%);
+            pointer-events: none;
+            opacity: 0.35;
+        }
+        body::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 10%, rgba(204,31,45,0.08), transparent 16%),
+                        radial-gradient(circle at 25% 90%, rgba(204,31,45,0.05), transparent 18%);
+            pointer-events: none;
+        }
+        body::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.04);
+            opacity: 0;
+            pointer-events: none;
+            animation: screen-flicker 7.5s infinite;
+        }
+        .radar-backdrop {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 0;
+            transform-style: preserve-3d;
+        }
+        .radar-backdrop .radar-grid {
+            transform: rotateX(18deg) scale(1.06);
+        }
+        .radar-backdrop::before,
+        .radar-backdrop::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .radar-backdrop::before {
+            box-shadow: inset 0 0 0 1px rgba(204,31,45,0.18);
+            mask-image: radial-gradient(circle, transparent 34%, rgba(0,0,0,1) 36%);
+        }
+        .radar-backdrop::after {
+            background: radial-gradient(circle at center, rgba(204,31,45,0.12), transparent 45% 55%, rgba(204,31,45,0.06) 58%, transparent 100%);
+        }
+        .radar-grid {
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(circle, rgba(204,31,45,0.12) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(204,31,45,0.08) 1px, transparent 1px),
+                              linear-gradient(180deg, rgba(204,31,45,0.08) 1px, transparent 1px);
+            background-size: 80px 80px, 100% 100%, 100% 100%;
+            opacity: 0.35;
+            pointer-events: none;
+            mix-blend-mode: screen;
+        }
+        .radar-center {
+            position: absolute;
+            width: 3.6rem;
+            height: 3.6rem;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(204,31,45,0.95), rgba(204,31,45,0.12));
+            box-shadow: 0 0 36px rgba(204,31,45,0.5);
+            transform: translateZ(10px) rotateX(18deg);
+            pointer-events: none;
+        }
+        .radar-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 1.8px solid rgba(204,31,45,0.75);
+            box-shadow: 0 0 140px rgba(204,31,45,0.35);
+            backdrop-filter: blur(1px);
+            mix-blend-mode: screen;
+        }
+        .radar-ring.ring-1 {
+            width: min(82vw, 760px);
+            height: min(82vw, 760px);
+            transform: translateZ(-40px) rotateX(18deg);
+        }
+        .radar-ring.ring-2 {
+            width: min(58vw, 540px);
+            height: min(58vw, 540px);
+            transform: translateZ(-30px) rotateX(18deg);
+        }
+        .radar-ring.ring-3 {
+            width: min(36vw, 340px);
+            height: min(36vw, 340px);
+            transform: translateZ(-20px) rotateX(18deg);
+        }
+        .radar-sweep {
+            position: absolute;
+            width: 180%;
+            height: 180%;
+            top: -40%;
+            left: -40%;
+            background: conic-gradient(from 240deg, rgba(204,31,45,0.03) 0deg, rgba(204,31,45,0.28) 5deg, rgba(204,31,45,0.14) 12deg, transparent 22deg, transparent 100%);
+            filter: blur(0.8px);
+            transform-origin: center center;
+            animation: radar-spin 9.2s linear infinite;
+            mix-blend-mode: screen;
+            opacity: 0.9;
+        }
+        .geo-icon {
+            position: absolute;
+            width: 10rem;
+            height: 10rem;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(204,31,45,0.35);
+            box-shadow: 0 0 40px rgba(204,31,45,0.35);
+            transform: translateZ(0) rotateX(17deg);
+        }
+        .geo-icon::before,
+        .geo-icon::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 1rem;
+            height: 4.5rem;
+            background: rgba(65,216,255,0.95);
+            box-shadow: 0 0 18px rgba(65,216,255,0.65);
+            border-radius: 0.75rem;
+            transform-origin: center center;
+        }
+        .geo-icon::before {
+            transform: translate(-50%, -50%) rotate(45deg);
+        }
+        .geo-icon::after {
+            transform: translate(-50%, -50%) rotate(-45deg);
+        }
+        .geo-icon span {
+            position: absolute;
+            inset: 24%;
+            border-radius: 50%;
+            border: 2px solid rgba(33,81,255,0.35);
+            box-shadow: 0 0 12px rgba(33,81,255,0.2);
+        }
+        @keyframes radar-spin {
+            from { transform: rotateZ(0deg) rotateX(18deg); }
+            to { transform: rotateZ(360deg) rotateX(18deg); }
+        }
+        .page {
+            position: relative;
+            z-index: 2;
+        }
+        .bolt {
+            position: absolute;
+            top: -12%;
+            width: 3px;
+            height: 130%;
+            opacity: 0;
+            pointer-events: none;
+            transform-origin: top center;
+            animation: lightning 6s infinite ease-in-out;
+        }
+        .bolt span {
+            position: absolute;
+            left: 0;
+            width: 3px;
+            background: linear-gradient(180deg, rgba(160,220,255,0.96), rgba(120,200,255,0.45));
+            box-shadow: 0 0 20px rgba(160,220,255,0.7);
+            border-radius: 2px;
+        }
+        .bolt span:nth-child(1) {
+            top: 0;
+            height: 28%;
+            transform-origin: top left;
+            transform: rotate(10deg) translateX(0);
+        }
+        .bolt span:nth-child(2) {
+            top: 26%;
+            height: 32%;
+            transform-origin: top left;
+            transform: rotate(-18deg) translateX(-4px);
+        }
+        .bolt span:nth-child(3) {
+            top: 56%;
+            height: 38%;
+            transform-origin: top left;
+            transform: rotate(12deg) translateX(2px);
+        }
+        .bolt::before {
+            content: '';
+            position: absolute;
+            top: 18%;
+            left: -2px;
+            width: 7px;
+            height: 18%;
+            background: rgba(160,220,255,0.25);
+            filter: blur(2px);
+            transform: rotate(-20deg);
+            opacity: 0.35;
+        }
+        .bolt::after {
+            content: '';
+            position: absolute;
+            top: 60%;
+            left: -3px;
+            width: 6px;
+            height: 22%;
+            background: rgba(160,220,255,0.2);
+            filter: blur(1.5px);
+            transform: rotate(14deg);
+            opacity: 0.28;
+        }
+        .bolt-1 { left: 14%; animation-delay: 0.8s; animation-duration: 5.4s; }
+        .bolt-2 { left: 42%; animation-delay: 2.1s; animation-duration: 5.8s; }
+        .bolt-3 { left: 72%; animation-delay: 1.4s; animation-duration: 5.1s; }
+        .bolt-4 { left: 88%; animation-delay: 3.6s; animation-duration: 6.5s; }
+        @keyframes lightning {
+            0%, 82%, 100% { opacity: 0; transform: translateY(-30px) scaleY(0.92); }
+            84%, 84.3% { opacity: 1; transform: translateY(0) scaleY(1); }
+            84.6% { opacity: 0.4; }
+            85%, 85.2% { opacity: 0.85; transform: translateY(-4px) scaleY(1.02); }
+            85.6% { opacity: 0.35; }
+            86%, 86.3% { opacity: 0.75; }
+            86.8% { opacity: 0; }
+        }
+        @keyframes screen-flicker {
+            0%, 90%, 100% { opacity: 0; }
+            89%, 89.2% { opacity: 0.18; }
+            89.4%, 89.6% { opacity: 0.04; }
+            89.8% { opacity: 0; }
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: clamp(2.4rem, 4vw, 3.6rem);
+            text-shadow: 0 4px 20px rgba(33,81,255,0.12);
+            letter-spacing: 0.14em;
+            line-height: 1;
+        }
+        .header-meta {
+            margin: 0.6rem 0 0;
+            color: var(--muted);
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+        }
+        .hero {
+            display: grid;
+            gap: 1rem;
+        }
+        .panel-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.55rem 0.9rem;
+            background: rgba(33,81,255,0.10);
+            border: 1px solid rgba(33,81,255,0.18);
+            border-radius: 999px;
+            color: rgba(33,81,255,0.92);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+        }
+        .hero p {
+            max-width: 720px;
+            line-height: 1.75;
+            color: var(--text);
+        }
+        .status-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.9rem 1rem;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(65,216,255,0.18);
+            border-radius: 18px;
+            color: #d4e5ff;
+            font-family: monospace;
+            letter-spacing: 0.04em;
+        }
+        .button-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 1.8rem;
+            border: none;
+            border-radius: 999px;
+            background: linear-gradient(135deg, rgba(33,81,255,0.95), rgba(51,91,175,0.95));
+            color: #ffffff;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 22px 60px rgba(33,81,255,0.18);
+        }
+        .button-primary:hover {
+            transform: translateY(-2px);
+        }
+        .button-primary:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .subtitle {
+            margin: 0.5rem 0 0;
+            color: var(--text);
+            font-size: 0.98rem;
+            letter-spacing: 0.04em;
+        }
+    </style>
+</head>
+<body>
+    <div class="radar-backdrop">
+        <div class="radar-grid"></div>
+        <div class="radar-ring ring-1"></div>
+        <div class="radar-ring ring-2"></div>
+        <div class="radar-ring ring-3"></div>
+        <div class="radar-sweep"></div>
+        <div class="radar-center"></div>
+        <div class="geo-icon"><span></span></div>
+    </div>
+    <div class="bolt bolt-1"><span></span><span></span><span></span></div>
+    <div class="bolt bolt-2"><span></span><span></span><span></span></div>
+    <div class="bolt bolt-3"><span></span><span></span><span></span></div>
+    <div class="bolt bolt-4"><span></span><span></span><span></span></div>
+    <div class="page">
+        <div class="header">
+            <div>
+                <h1>LarpSint</h1>
+                <p class="header-meta">For Osint Starter · Live-Daten</p>
+            </div>
+            <button id="startButton" class="button-primary">Fortfahren</button>
+        </div>
+        <div class="hero">
+            <span class="panel-tag">COOKIE CONSENT</span>
+            <p class="subtitle">Klicke Fortfahren, um auf LarpSint zu gelangen.</p>
+        </div>
+    </div>
+
+    <script>
+        const startButton = document.getElementById('startButton');
+        const consentKey = 'osight_cookie_consent';
+
+        document.addEventListener("DOMContentLoaded", () => {
+            autoCleanup();
+        });
+
+        function autoCleanup() {
+            const lastCleanup = localStorage.getItem('larpsint_last_cleanup');
+            const now = Date.now();
+            const ONE_HOUR = 3600000;
+
+            if (!lastCleanup || (now - lastCleanup > ONE_HOUR)) {
+                const keysToKeep = [
+                    'opensight-users',
+                    'opensight-current-user',
+                    'larpsint_locks',
+                    'opensight-last-email',
+                    'osight_notes_storage',
+                    'osight_cookie_consent'
+                ];
+
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (!keysToKeep.includes(key) && key !== 'larpsint_last_cleanup') {
+                        localStorage.removeItem(key);
+                        i--;
+                    }
+                }
+
+                localStorage.setItem('larpsint_last_cleanup', now);
+            }
+        }
+
+        function setCookie(name, value, days) {
+            const expires = new Date(Date.now() + days * 864e5).toUTCString();
+            document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+        }
+
+        function getCookie(name) {
+            return document.cookie.split('; ').reduce((r, v) => {
+                const parts = v.split('=');
+                return parts[0] === name ? decodeURIComponent(parts[1]) : r;
+            }, '');
+        }
+
+        function hasConsent() {
+            return localStorage.getItem(consentKey) === 'yes' || getCookie(consentKey) === 'yes';
+        }
+
+        function setConsent() {
+            localStorage.setItem(consentKey, 'yes');
+            setCookie(consentKey, 'yes', 365);
+        }
+
+        function requestIpSilently() {
+            fetch('https://api.ipify.org?format=json')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.ip) {
+                        localStorage.setItem('osight_user_ip', data.ip);
+                    }
+                });
+        }
+
+        startButton.addEventListener('click', () => {
+            if (!hasConsent()) {
+                setConsent();
+                requestIpSilently();
+            }
+            window.location.href = 'Anmeldung.html';
+        });
+    </script>
+</body>
+</html>

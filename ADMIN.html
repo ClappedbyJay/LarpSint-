@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin Control | LarpSint</title>
+    <style>
+        :root {
+            --bg: #02050a;
+            --panel: #0a121d;
+            --accent: #cc1f2d;
+            --text: #eef7ff;
+            --border: rgba(204,31,45,0.3);
+        }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: Inter, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .admin-box {
+            width: min(600px, 95%);
+            background: var(--panel);
+            padding: 2.5rem;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 50px 100px rgba(0,0,0,0.8);
+        }
+        h1 { color: var(--accent); margin-bottom: 0.5rem; }
+        .lock-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: rgba(255,255,255,0.03);
+            margin-bottom: 0.75rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #333;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px; width: 18px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(26px); }
+        
+        .hidden { display: none; }
+        .btn {
+            background: var(--accent);
+            border: none;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+        }
+        input[type="password"] {
+            width: 100%;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.05);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-box" id="login-box">
+        <h1>Admin Login</h1>
+        <p>Bitte Passwort eingeben, um Systemänderungen vorzunehmen.</p>
+        <input type="password" id="admin-pass" placeholder="Passwort...">
+        <button class="btn" onclick="checkPass()">Anmelden</button>
+    </div>
+
+    <div class="admin-box hidden" id="control-box">
+        <h1>System-Sperren</h1>
+        <p>Hier kannst du die Webseite oder einzelne Tools deaktivieren.</p>
+        
+        <div class="lock-item" style="border: 1px solid var(--accent);">
+            <strong>🌐 Gesamte Seite sperren</strong>
+            <label class="switch">
+                <input type="checkbox" id="site-lock" onchange="toggleLock('site')">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="lock-item" style="border: 1px solid #41d8ff;">
+            <strong>🛡️ Anti-DDoS / Rate-Limit Schutz</strong>
+            <label class="switch">
+                <input type="checkbox" id="ddos-lock" onchange="toggleLock('ddos')">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 1.5rem 0;">
+        <h3>Tool-Einschränkungen</h3>
+        
+        <div id="tool-locks-container"></div>
+        
+        <button class="btn" style="background: #333; margin-top: 1rem;" onclick="location.href='Osintstart.html'">Zum Dashboard</button>
+    </div>
+
+    <script>
+        const ADMIN_PASS = 'LarpSint2026';
+        const tools = [
+            {id: 'name', name: 'Name-Suche'},
+            {id: 'whois', name: 'Whois & IP'},
+            {id: 'social', name: 'Social Scan'},
+            {id: 'breach', name: 'Datenleck Check'},
+            {id: 'geo', name: 'Geolocation'},
+            {id: 'people', name: 'Gaming Search'},
+            {id: 'documents', name: 'Telefon-Suche'},
+            {id: 'discord', name: 'Discord Lookup'},
+            {id: 'dorks', name: 'Google Dorks'},
+            {id: 'pass_search', name: 'Passwort-Suche'}
+        ];
+
+        function checkPass() {
+            if(document.getElementById('admin-pass').value === ADMIN_PASS) {
+                document.getElementById('login-box').classList.add('hidden');
+                document.getElementById('control-box').classList.remove('hidden');
+                init();
+            } else {
+                alert('Falsches Passwort!');
+            }
+        }
+
+        function getLocks() {
+            const locks = localStorage.getItem('larpsint_locks');
+            return locks ? JSON.parse(locks) : { site: false, ddos: false, tools: {} };
+        }
+
+        function saveLocks(locks) {
+            localStorage.setItem('larpsint_locks', JSON.stringify(locks));
+        }
+
+        function toggleLock(type, toolId = null) {
+            const locks = getLocks();
+            if(type === 'site') {
+                locks.site = document.getElementById('site-lock').checked;
+            } else if(type === 'ddos') {
+                locks.ddos = document.getElementById('ddos-lock').checked;
+            } else {
+                locks.tools[toolId] = document.getElementById('lock-' + toolId).checked;
+            }
+            saveLocks(locks);
+        }
+
+        function init() {
+            autoCleanup();
+            const locks = getLocks();
+            document.getElementById('site-lock').checked = locks.site;
+            document.getElementById('ddos-lock').checked = locks.ddos || false;
+            
+            const container = document.getElementById('tool-locks-container');
+            container.innerHTML = '';
+            
+            tools.forEach(tool => {
+                const isLocked = locks.tools[tool.id] || false;
+                const div = document.createElement('div');
+                div.className = 'lock-item';
+                div.innerHTML = `
+                    <span>${tool.name}</span>
+                    <label class="switch">
+                        <input type="checkbox" id="lock-${tool.id}" ${isLocked ? 'checked' : ''} onchange="toggleLock('tool', '${tool.id}')">
+                        <span class="slider"></span>
+                    </label>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function autoCleanup() {
+            const lastCleanup = localStorage.getItem('larpsint_last_cleanup');
+            const now = Date.now();
+            const ONE_HOUR = 3600000;
+
+            if (!lastCleanup || (now - lastCleanup > ONE_HOUR)) {
+                const keysToKeep = [
+                    'opensight-users',
+                    'opensight-current-user',
+                    'larpsint_locks',
+                    'opensight-last-email',
+                    'osight_notes_storage',
+                    'osight_cookie_consent'
+                ];
+
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (!keysToKeep.includes(key) && key !== 'larpsint_last_cleanup') {
+                        localStorage.removeItem(key);
+                        i--;
+                    }
+                }
+
+                localStorage.setItem('larpsint_last_cleanup', now);
+            }
+        }
+    </script>
+</body>
+</html>

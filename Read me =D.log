@@ -1,0 +1,28 @@
+Hey, so LarpSint is an HTML program/website that a colleague and I built in 24 hours.
+You can open and debug it in Visual Studio Code. It features simple and widely used OSINT tools,
+ such as email lookup, data stealers, or stealer logs.
+It was just a fun project, so the code is open source for everyone.
+There are two passwords on the site that restrict access to areas like the dashboard and login pages:
+1st password: LarpSint2026
+2nd password:
+geheim123
+
+I hope you have fun with it and find it useful. Please keep in mind that we are completely new to HTML 
+and built some parts of it ourselves.
+----------------------------------------------------------------------------------------------------------
+Hi everyone, "Larp Sint" is an OSINT tool that a colleague and I wrote in just 24 hours with the help of AI.
+The tool has everything you’d look for in an OSINT tool,
+such as stealer logs, IP address lookups, or email lookups.
+
+You launch the tool by running the start file.
+
+For the best experience, use
+Visual Studio Code.
+
+Once you've done that, go to `start.html` and debug it.
+
+From there, you can register using a fake email and password to access the site.
+
+We built an admin panel that allows you to disable specific OSINT tools as needed; we also included DDoS protection for search queries—something we added just for fun.
+
+I strongly advise against using this tool to break the law; it is intended for personal testing and for practice or learning. I accept no liability if you use this tool for malicious purposes!

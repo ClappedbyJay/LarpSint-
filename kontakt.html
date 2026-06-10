@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kontakt | LarpSint</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #000000;
+            --surface: rgba(3, 8, 15, 0.85);
+            --surface-2: rgba(10, 25, 41, 0.9);
+            --text: #edf4ff;
+            --muted: #82a8c4;
+            --accent: #cc1f2d;
+            --accent-blue: #41d8ff;
+            --border: rgba(204, 31, 45, 0.15);
+            --shadow: rgba(0, 0, 0, 0.7);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Inter, Arial, sans-serif;
+            background: radial-gradient(circle at center, rgba(204,31,45,0.08), transparent 25%),
+                        linear-gradient(180deg, #000000 0%, #02050d 100%);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            overflow: hidden;
+        }
+
+        /* Radar Background */
+        .radar-backdrop {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 0;
+        }
+        .radar-grid {
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(circle, rgba(204,31,45,0.05) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(204,31,45,0.03) 1px, transparent 1px),
+                              linear-gradient(180deg, rgba(204,31,45,0.03) 1px, transparent 1px);
+            background-size: 80px 80px, 100% 100%, 100% 100%;
+            opacity: 0.4;
+        }
+        .radar-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid rgba(204,31,45,0.15);
+        }
+        .ring-1 { width: 800px; height: 800px; }
+        .ring-2 { width: 500px; height: 500px; }
+        .radar-sweep {
+            position: absolute;
+            width: 1000px;
+            height: 1000px;
+            background: conic-gradient(from 0deg, transparent 0%, rgba(204,31,45,0.15) 10%, transparent 20%);
+            animation: rotate 10s linear infinite;
+            border-radius: 50%;
+        }
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .card {
+            position: relative;
+            z-index: 1;
+            width: min(520px, 100%);
+            background: var(--surface-2);
+            border: 1px solid rgba(65, 216, 255, 0.15);
+            border-radius: 32px;
+            padding: 2.5rem;
+            box-shadow: 0 40px 100px var(--shadow);
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        h1 {
+            margin: 0 0 0.5rem;
+            font-size: clamp(2.2rem, 4vw, 2.8rem);
+            color: #ff6c7a;
+            text-shadow: 0 1px 0 #5d0012, 0 4px 12px rgba(255,38,62,0.35);
+        }
+        p {
+            margin: 0 0 2rem;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+        .contact-methods {
+            width: 100%;
+            display: grid;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .method {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 20px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        .method strong {
+            color: var(--accent-blue);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+        .method span {
+            color: var(--text);
+            font-family: 'Courier New', monospace;
+            font-size: 1.15rem;
+        }
+        .back-link {
+            display: inline-block;
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="radar-backdrop">
+        <div class="radar-grid"></div>
+        <div class="radar-ring ring-1"></div>
+        <div class="radar-ring ring-2"></div>
+        <div class="radar-sweep"></div>
+    </div>
+
+    <div class="card">
+        <h1>Kontakt & Support</h1>
+        <p>Hast du Fragen oder Feedback zum Dashboard? Erreche uns hier:</p>
+
+        <div class="contact-methods">
+            <div class="method">
+                <strong>Discord</strong>
+                <span>4high2cry</span>
+            </div>
+            <div class="method">
+                <strong>Für Strafverfolgung</strong>
+                <span>tamaraaline66@proton.me</span>
+                <span>tamaraliane66@proton.me</span>
+            </div>
+        </div>
+
+        <a class="back-link" id="back-link" href="Anmeldung.html">← Zurück zur Anmeldung</a>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            autoCleanup();
+            const backLink = document.getElementById('back-link');
+            const urlParams = new URLSearchParams(window.location.search);
+            const from = urlParams.get('from');
+            const user = localStorage.getItem('opensight-current-user');
+
+            // Priorität 1: Der URL-Parameter sagt uns explizit, woher wir kommen
+            if (from === 'login') {
+                backLink.href = 'Anmeldung.html';
+                backLink.textContent = '← Zurück zur Anmeldung';
+            } else if (from === 'dashboard') {
+                backLink.href = 'Osintstart.html';
+                backLink.textContent = '← Zurück zum Dashboard';
+            } 
+            // Fallback: Nur wenn kein Parameter da ist, schauen wir auf den Login-Status
+            else if (user && user !== "null" && user !== "undefined") {
+                backLink.href = 'Osintstart.html';
+                backLink.textContent = '← Zurück zum Dashboard';
+            }
+        });
+
+        function autoCleanup() {
+            const lastCleanup = localStorage.getItem('larpsint_last_cleanup');
+            const now = Date.now();
+            const ONE_HOUR = 3600000;
+
+            if (!lastCleanup || (now - lastCleanup > ONE_HOUR)) {
+                const keysToKeep = [
+                    'opensight-users',
+                    'opensight-current-user',
+                    'larpsint_locks',
+                    'opensight-last-email',
+                    'osight_notes_storage',
+                    'osight_cookie_consent'
+                ];
+
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (!keysToKeep.includes(key) && key !== 'larpsint_last_cleanup') {
+                        localStorage.removeItem(key);
+                        i--;
+                    }
+                }
+
+                localStorage.setItem('larpsint_last_cleanup', now);
+            }
+        }
+    </script>
+</body>
+</html>

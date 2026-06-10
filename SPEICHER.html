@@ -1,0 +1,294 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Speicher | LarpSint</title>
+    <style id="security-lock">
+        body { display: none !important; }
+    </style>
+    <script>
+        // Höchste Sicherheitsstufe für die Speicherverwaltung
+        if (!localStorage.getItem('opensight-current-user')) {
+            window.location.href = 'Anmeldung.html';
+        } else {
+            document.documentElement.style.display = 'block';
+        }
+    </script>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #04101a;
+            --panel: rgba(5,14,24,0.96);
+            --border: rgba(65,216,255,0.12);
+            --text: #dbe8ff;
+            --muted: #84b3d4;
+            --accent: #5dd0ff;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Inter, Arial, sans-serif;
+            background: radial-gradient(circle at top left, rgba(65,216,255,0.08), transparent 18%),
+                        radial-gradient(circle at bottom right, rgba(42,153,255,0.06), transparent 16%),
+                        linear-gradient(180deg, #02050b 0%, #040e18 100%);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .panel {
+            width: min(980px, 100%);
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            padding: 2rem;
+            box-shadow: 0 40px 140px rgba(0,0,0,0.35);
+        }
+        h1 {
+            margin: 0 0 0.75rem;
+            font-size: clamp(2rem, 3vw, 3rem);
+        }
+        p {
+            margin: 0 0 1rem;
+            color: var(--muted);
+            line-height: 1.75;
+        }
+        .section {
+            margin-bottom: 1.75rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.55rem;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+        input {
+            width: 100%;
+            max-width: 420px;
+            padding: 0.95rem 1rem;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.05);
+            color: var(--text);
+            font-size: 1rem;
+        }
+        input:focus {
+            outline: none;
+            border-color: rgba(65,216,255,0.45);
+            box-shadow: 0 0 0 4px rgba(65,216,255,0.1);
+        }
+        .message {
+            margin-top: 0.7rem;
+            min-height: 1.2rem;
+            color: #f18787;
+            font-size: 0.95rem;
+        }
+        .hidden {
+            display: none;
+        }
+        h2 {
+            margin: 0 0 0.75rem;
+            font-size: 1.1rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+        pre {
+            margin: 0;
+            padding: 1rem;
+            border-radius: 18px;
+            background: rgba(10,24,40,0.95);
+            border: 1px solid rgba(65,216,255,0.12);
+            overflow-x: auto;
+            color: #c3dcff;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+        }
+        .button {
+            border: none;
+            border-radius: 999px;
+            padding: 0.95rem 1.5rem;
+            color: #06101a;
+            background: linear-gradient(135deg, rgba(65,216,255,0.98), rgba(120,238,255,0.85));
+            cursor: pointer;
+            font-weight: 700;
+            transition: transform 0.2s ease;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+        }
+        .link {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="panel" id="auth-panel">
+        <h1>Speicherzugriff</h1>
+        <p>Gib das Zugangspasswort ein, um gespeicherte Daten anzuzeigen.</p>
+        <div class="section">
+            <label for="storage-password">Passwort</label>
+            <input type="password" id="storage-password" placeholder="Zugangspasswort">
+            <div class="message" id="password-message"></div>
+        </div>
+        <div class="actions">
+            <button id="unlockStorage" class="button">Zugriff erlauben</button>
+            <a class="link" href="start.html">Zur Startseite</a>
+        </div>
+    </div>
+
+    <div class="panel hidden" id="storage-panel">
+        <h1>Gespeicherte Anmeldedaten</h1>
+        <p>Hier werden die registrierten Konten und der zuletzt angemeldete Nutzer aus dem Browser-Speicher angezeigt.</p>
+        <p style="color: #ff3a4c; font-weight: bold;">⚠️ Hinweis: Diese Seite zeigt ALLES an, was im Browser-Speicher dieser Domain liegt.</p>
+
+        <div id="dynamic-storage-container">
+            <!-- Hier werden alle Schlüssel automatisch eingefügt -->
+            <div class="section">
+                <pre>Lade Daten...</pre>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button id="clearStorage" class="button" style="background: linear-gradient(135deg, #ff4141, #cc1f2d); color: white;">Alles löschen</button>
+            <button id="downloadBackup" class="button">Daten-Backup (JSON)</button>
+            <a class="link" href="Anmeldung.html">Zur Anmeldung</a>
+            <a class="link" href="start.html">Zur Startseite</a>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Diese Seite wurde so modifiziert, dass sie dynamisch JEDEN Schlüssel 
+         * aus dem LocalStorage ausliest. So wird nichts übersehen.
+         */
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById('security-lock').remove();
+            document.body.style.display = 'flex';
+            autoCleanup();
+        });
+
+        const authPanel = document.getElementById('auth-panel');
+        const storagePanel = document.getElementById('storage-panel');
+        const passwordInput = document.getElementById('storage-password');
+        const passwordMessage = document.getElementById('password-message');
+        const unlockStorage = document.getElementById('unlockStorage');
+        const currentUserElement = document.getElementById('current-user');
+        const storedUsersElement = document.getElementById('stored-users');
+        const otherStorageElement = document.getElementById('other-storage');
+        const clearStorage = document.getElementById('clearStorage');
+
+        const adminPassword = 'LarpSint2026';
+
+        function autoCleanup() {
+            const lastCleanup = localStorage.getItem('larpsint_last_cleanup');
+            const now = Date.now();
+            const ONE_HOUR = 3600000;
+
+            if (!lastCleanup || (now - lastCleanup > ONE_HOUR)) {
+                const keysToKeep = [
+                    'opensight-users',
+                    'opensight-current-user',
+                    'larpsint_locks',
+                    'opensight-last-email',
+                    'osight_notes_storage',
+                    'osight_cookie_consent'
+                ];
+
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (!keysToKeep.includes(key) && key !== 'larpsint_last_cleanup') {
+                        localStorage.removeItem(key);
+                        i--;
+                    }
+                }
+
+                localStorage.setItem('larpsint_last_cleanup', now);
+            }
+        }
+
+        function pretty(data) {
+            return JSON.stringify(data, null, 2);
+            if (typeof data === 'object' && data !== null) {
+                return JSON.stringify(data, null, 2);
+            }
+            return String(data); // Handle primitive types or null/undefined
+        }
+
+        function loadStorage() {
+            const currentUser = localStorage.getItem('opensight-current-user');
+            const users = localStorage.getItem('opensight-users');
+            const cookieConsent = localStorage.getItem('osight_cookie_consent');
+            const userIp = localStorage.getItem('osight_user_ip');
+            const lastEmail = localStorage.getItem('opensight-last-email');
+
+            currentUserElement.textContent = currentUser ? pretty(JSON.parse(currentUser)) : 'Kein aktueller Nutzer gefunden.';
+            storedUsersElement.textContent = users ? pretty(JSON.parse(users)) : 'Keine registrierten Konten gefunden.';
+            try {
+                currentUserElement.textContent = currentUser ? pretty(JSON.parse(currentUser)) : 'Kein aktueller Nutzer gefunden.';
+            } catch (e) {
+                currentUserElement.textContent = `Fehler beim Parsen des aktuellen Nutzers: ${currentUser}`;
+                console.error("Error parsing opensight-current-user:", e);
+            }
+            
+            try {
+                storedUsersElement.textContent = users ? pretty(JSON.parse(users)) : 'Keine registrierten Konten gefunden.';
+            } catch (e) {
+                storedUsersElement.textContent = `Fehler beim Parsen der registrierten Konten: ${users}`;
+                console.error("Error parsing opensight-users:", e);
+            }
+            otherStorageElement.textContent = pretty({ cookieConsent, userIp, lastEmail });
+        }
+
+        function showStorage() {
+            authPanel.classList.add('hidden');
+            storagePanel.classList.remove('hidden');
+            loadStorage();
+        }
+
+        unlockStorage.addEventListener('click', () => {
+            if (passwordInput.value === adminPassword) {
+                showStorage();
+            } else {
+                passwordMessage.textContent = 'Falsches Passwort. Zugriff verweigert.';
+                passwordMessage.style.color = '#f18787';
+            }
+        });
+
+        clearStorage.addEventListener('click', () => {
+            if (confirm('Möchtest du wirklich unwiderruflich ALLES löschen? Alle Passwörter und Nutzer gehen verloren.')) {
+                localStorage.clear(); // Löscht absolut alles im LocalStorage
+                loadStorage(); // Reload to show empty state
+            }
+        });
+
+        downloadBackup.addEventListener('click', () => {
+            const backup = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                backup[key] = localStorage.getItem(key);
+            }
+            
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "larpsint_backup.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        });
+    </script>
+</body>
+</html>

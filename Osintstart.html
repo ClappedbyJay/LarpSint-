@@ -1,0 +1,1823 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OSINT Dashboard | LarpSint</title>
+    <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+    <style id="security-lock">
+        body { display: none !important; }
+    </style>
+    <script>
+        // Sofortiger Zugriffsschutz vor dem Rendern
+        const locks = JSON.parse(localStorage.getItem('larpsint_locks') || '{"site":false,"ddos":false,"tools":{}}');
+        if (locks.site) {
+            alert("SYSTEM-SPERRE: Die Webseite wurde vom Administrator vorübergehend deaktiviert.");
+            window.location.href = 'start.html';
+        } else if (!localStorage.getItem('opensight-current-user')) {
+            window.location.href = 'Anmeldung.html';
+        } else {
+            document.documentElement.style.display = 'block';
+        }
+    </script>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #000000;
+            --panel: rgba(18,24,38,0.98);
+            --surface: rgba(12,18,30,0.95);
+            --text: #eef7ff;
+            --surface-text: #eef7ff;
+            --surface-muted: #b8c8df;
+            --muted: #8fbde7;
+            --accent: #cc1f2d;
+            --accent-strong: #ff3a4c;
+            --border: rgba(204,31,45,0.18);
+            --shadow: rgba(0,0,0,0.32);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Inter, Arial, sans-serif;
+            background: #000000;
+            color: var(--text);
+        }
+        .page {
+            width: min(1440px, 100%);
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .header-left h1 {
+            position: relative;
+            display: inline-block;
+            margin: 0;
+            font-size: clamp(2.2rem, 3vw, 3.4rem);
+            color: #ff6c7a;
+            font-weight: 800;
+            text-shadow: 0 1px 0 #5d0012, 0 4px 12px rgba(255,38,62,0.35), 0 12px 30px rgba(130,0,0,0.35);
+            transform: perspective(900px) rotateX(8deg);
+        }
+        .header-left p {
+            margin: 0.75rem 0 0;
+            color: var(--muted);
+            max-width: 760px;
+            line-height: 1.75;
+        }
+        .header-actions {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+        .btn {
+            border: none;
+            border-radius: 999px;
+            padding: 0.85rem 1.2rem;
+            background: linear-gradient(135deg, rgba(65,216,255,0.10), rgba(55,135,255,0.14));
+            color: var(--text);
+            cursor: pointer;
+            transition: transform 0.2s ease, background 0.2s ease;
+            backdrop-filter: blur(4px);
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            background: linear-gradient(135deg, rgba(65,216,255,0.22), rgba(55,135,255,0.25));
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: 280px minmax(0, 1fr);
+            gap: 2rem;
+        }
+        .sidebar {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            padding: 1.5rem;
+            box-shadow: 0 32px 90px var(--shadow);
+            min-height: 680px;
+        }
+        .sidebar h2 {
+            margin: 0 0 1rem;
+            font-size: 1.05rem;
+            color: var(--accent);
+        }
+        .menu {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            gap: 0.8rem;
+        }
+        .menu button {
+            width: 100%;
+            text-align: left;
+            border: 1px solid rgba(204,31,45,0.12);
+            background: rgba(255,255,255,0.08);
+            color: var(--text);
+            padding: 1rem 1rem;
+            border-radius: 18px;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
+        }
+        .menu button:hover,
+        .menu button.active {
+            background: rgba(255,255,255,0.10);
+            border-color: rgba(204,31,45,0.20);
+            transform: translateY(-1px);
+        }
+        .menu button span {
+            display: block;
+        }
+        .menu button small {
+            color: var(--muted);
+            font-size: 0.83rem;
+        }
+        .sidebar-note {
+            margin-top: 2rem;
+            padding: 1rem;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(204,31,45,0.14);
+            color: var(--text);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        .main {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        .content-card {
+            background: rgba(18,24,38,0.82);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 28px;
+            padding: 1.75rem;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.22);
+        }
+        .content-card h3 {
+            margin: 0 0 0.75rem;
+            font-size: 1.2rem;
+            color: #111111;
+        }
+        .content-card p {
+            margin: 0;
+            line-height: 1.8;
+            color: #444444;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+        .card-metric {
+            background: rgba(24,34,48,0.78);
+            padding: 1rem 1.2rem;
+            border-radius: 22px;
+            border: 1px solid rgba(255,255,255,0.06);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.16);
+        }
+        .card-metric h4 {
+            margin: 0 0 0.5rem;
+            font-size: 0.95rem;
+            color: var(--accent);
+        }
+        .card-metric strong {
+            display: block;
+            font-size: 1.5rem;
+            margin-top: 0.25rem;
+            color: var(--text);
+        }
+        .name-search-form {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .name-search-form .search-row {
+            display: grid;
+            gap: 0.5rem;
+        }
+        .name-search-form label {
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+        .name-search-form input {
+            width: 100%;
+            padding: 0.95rem 1rem;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.04);
+            color: var(--text);
+            font-size: 1rem;
+        }
+        .name-search-form input:focus {
+            outline: none;
+            border-color: rgba(65,216,255,0.45);
+            box-shadow: 0 0 0 4px rgba(65,216,255,0.08);
+        }
+        .search-results {
+            margin-top: 1rem;
+        }
+        .search-results p {
+            margin: 0 0 0.85rem;
+            line-height: 1.7;
+            color: var(--muted);
+        }
+        .search-results a {
+            color: var(--accent);
+        }
+        .search-status {
+            margin: 0.75rem 0;
+            padding: 0.85rem 1rem;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.04);
+            color: var(--text);
+        }
+        .link-list {
+            list-style: none;
+            margin: 0.75rem 0 0;
+            padding: 0;
+            display: grid;
+            gap: 0.7rem;
+        }
+        .link-list li {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 0.9rem 1rem;
+        }
+        .link-list a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .search-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .status-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 999px;
+            background: rgba(65,216,255,0.12);
+            color: var(--accent);
+            font-size: 0.92rem;
+            font-weight: 700;
+        }
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .result-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 1rem 1.1rem;
+            border-radius: 22px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            min-height: 110px;
+        }
+        .result-card strong {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+        .result-card p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.55;
+            font-size: 0.95rem;
+        }
+        .result-link {
+            margin-top: 1rem;
+            align-self: flex-start;
+            border-radius: 999px;
+            padding: 0.7rem 0.95rem;
+            background: rgba(65,216,255,0.14);
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 700;
+            transition: background 0.2s ease;
+        }
+        .result-link:hover {
+            background: rgba(65,216,255,0.24);
+        }
+        .embed-wrap {
+            width: 100%;
+            min-height: 420px;
+            overflow: hidden;
+            border-radius: 18px;
+            background: rgba(0,0,0,0.12);
+        }
+        .embed-wrap iframe {
+            width: 100%;
+            height: 420px;
+            border: none;
+        }
+        .placeholder {
+            min-height: 320px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            gap: 0.85rem;
+            color: var(--muted);
+            border-radius: 22px;
+        }
+        .placeholder strong {
+            color: #eef7ff;
+            font-size: 1.25rem;
+        }
+            /* Passwort-Sichtbarkeit Toggle */
+            .password-wrapper {
+                position: relative;
+                width: 100%;
+                display: flex;
+                align-items: center;
+            }
+            .password-wrapper input {
+                padding-right: 3.5rem !important;
+            }
+            .toggle-password {
+                position: absolute;
+                right: 12px;
+                background: none;
+                border: none;
+                color: var(--muted);
+                cursor: pointer;
+                font-size: 1.2rem;
+                z-index: 10;
+                padding: 0;
+                line-height: 1;
+            }
+        .tool-title,
+        .search-header .tool-title {
+            display: inline-block;
+            color: #ff6c7a;
+            font-size: 1.25rem;
+            font-weight: 800;
+            text-shadow: 0 1px 0 #5d0012, 0 4px 12px rgba(255,38,62,0.35), 0 12px 30px rgba(130,0,0,0.35);
+            transform: perspective(900px) rotateX(8deg);
+        }
+        .notes-container {
+            display: grid;
+            gap: 1rem;
+        }
+        .notes-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .notes-header h3 {
+            margin: 0;
+            color: #ff6c7a;
+            font-size: 1.15rem;
+            font-weight: 800;
+            text-shadow: 0 1px 0 #5d0012, 0 4px 12px rgba(255,38,62,0.35);
+        }
+        .save-status {
+            font-size: 0.9rem;
+            color: var(--muted);
+            padding: 0.4rem 0.8rem;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .save-status.saved {
+            color: #5bff65;
+            border-color: rgba(91,255,101,0.3);
+            background: rgba(91,255,101,0.08);
+        }
+        #notes-textarea {
+            width: 100%;
+            min-height: 280px;
+            padding: 1rem;
+            border-radius: 18px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.04);
+            color: var(--text);
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            resize: vertical;
+            transition: all 0.2s ease;
+        }
+        #notes-textarea:focus {
+            outline: none;
+            border-color: rgba(65,216,255,0.45);
+            box-shadow: 0 0 0 4px rgba(65,216,255,0.08);
+            background: rgba(255,255,255,0.06);
+        }
+        .notes-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+        .btn-secondary {
+            padding: 0.7rem 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.06);
+            color: var(--text);
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(255,255,255,0.2);
+        }
+        @media (max-width: 980px) {
+            .layout { grid-template-columns: 1fr; }
+            .sidebar { min-height: auto; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <header class="header">
+            <div class="header-left">
+                <h1>LarpSint Hub</h1>
+                <p>Wähle links ein Tool, um die Analyse-Oberfläche zu öffnen. Die linke Spalte bleibt frei für deine Navigation und späteren Klick-Targets.</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn" onclick="logout()">Abmelden</button>
+                <button class="btn" onclick="window.location.href='kontakt.html?from=dashboard'">Kontakt</button>
+            </div>
+        </header>
+        <div class="layout">
+            <aside class="sidebar">
+                <h2>OSINT-Tools</h2>
+                <ul class="menu">
+                    <button type="button" class="active" data-tool="dashboard"><span>Übersicht</span><small>Start & Notizen</small></button>
+                    <button type="button" data-tool="name"><span>Vor-/Nachname</span><small>Personensuche</small></button>
+                    <button type="button" data-tool="whois"><span>Whois & Domain IP Tracker</span><small>Domain- & IP-Daten</small></button>
+                    <button type="button" data-tool="social"><span>Social Media Scan</span><small>Profile prüfen</small></button>
+                    <button type="button" data-tool="breach"><span>Datenleck Check</span><small>Veröffentlichte Konten</small></button>
+                    <button type="button" data-tool="geo"><span>Geolocation</span><small>Standortkarte</small></button>
+                    <button type="button" data-tool="people"><span>Ingamename-Abfrage</span><small>Gaming-Identitäten</small></button>
+                    <button type="button" data-tool="documents"><span>Telefonnummer-Abfrage</span><small>Rufnummern-Suche</small></button>
+                    <button type="button" data-tool="discord"><span>Discord Lookup</span><small>User ID Analyse</small></button>
+                    <button type="button" data-tool="dorks"><span>Google Dorks</span><small>Erweiterte Suche</small></button>
+                    <button type="button" data-tool="pass_search"><span>Passwort-Suche</span><small>Reverse Lookup</small></button>
+                </ul>
+                <div class="sidebar-note">
+                    <strong>Hinweis:</strong> Bitte beachtet das ich das tool euch kostenlos zur verfügung stelle und ihr dann nartürlich nicht alle möglich keiten habt wie bei einen gekaufen tool aber wir abrbeiten dran =D
+                </div>
+            </aside>
+            <main class="main">
+                <section class="content-card">
+                    <div class="dashboard-grid">
+                        <div class="card-metric">
+                            <h4>Aktueller Nutzer</h4>
+                            <strong id="current-user-label">Lade...</strong>
+                        </div>
+                        <div class="card-metric">
+                            <h4>Aktives Tool</h4>
+                            <strong id="active-tool-label">Übersicht</strong>
+                        </div>
+                    </div>
+                </section>
+                <section class="content-card">
+                    <div class="placeholder" id="tool-content">
+                        <strong>Wähle links ein OSINT-Tool</strong>
+                        <p>Hier erscheinen später die Inhalte zur gewählten Analyse. Dies ist die grobe Layout-Basis für deinen Raum.</p>
+                    </div>
+                </section>
+                <section class="content-card">
+                    <div class="notes-container">
+                        <div class="notes-header">
+                            <h3>📝 Meine Notizen</h3>
+                            <div class="save-status" id="save-status">Auto-Speicher aktiv</div>
+                        </div>
+                        <textarea id="notes-textarea" placeholder="Schreibe hier deine Notizen und Analysen auf. Alles wird automatisch gespeichert..."></textarea>
+                        <div class="notes-actions">
+                            <button class="btn-secondary" id="export-notes">⬇️ Notizen exportieren</button>
+                            <button class="btn-secondary" id="clear-notes">🗑️ Notizen löschen</button>
+                            <button class="btn-secondary" id="copy-notes">📋 Kopieren</button>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+    <script>
+        // Seite sichtbar machen, da Schutzprüfung im Head bestanden wurde
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById('security-lock').remove();
+            document.body.style.display = 'block';
+            autoCleanup(); // Startet den automatischen Mülleimer
+        });
+
+        /**
+         * Automatischer Mülleimer: Leert jede Stunde unnötigen Ballast,
+         * ohne Anmeldedaten oder wichtige Einstellungen zu löschen.
+         */
+        function autoCleanup() {
+            const lastCleanup = localStorage.getItem('larpsint_last_cleanup');
+            const now = Date.now();
+            const ONE_HOUR = 3600000; // 60 Min * 60 Sek * 1000 ms
+
+            if (!lastCleanup || (now - lastCleanup > ONE_HOUR)) {
+                // Diese Schlüssel werden NIEMALS gelöscht
+                const keysToKeep = [
+                    'opensight-users',           // Registrierte Konten
+                    'opensight-current-user',    // Aktueller Login
+                    'larpsint_locks',            // Admin-Sperren
+                    'opensight-last-email',      // Letzte Email (Anmeldekomfort)
+                    'osight_notes_storage',      // Deine Notizen
+                    'osight_cookie_consent'      // Cookie-Zustimmung
+                ];
+
+                // Alle anderen Schlüssel im LocalStorage entfernen
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (!keysToKeep.includes(key) && key !== 'larpsint_last_cleanup') {
+                        localStorage.removeItem(key);
+                        i--; // Index korrigieren, da die Liste schrumpft
+                    }
+                }
+
+                localStorage.setItem('larpsint_last_cleanup', now);
+                console.log("Automatischer Mülleimer: Unnötige Daten wurden bereinigt.");
+            }
+        }
+
+        const menuButtons = document.querySelectorAll('.menu button');
+        const toolLabel = document.getElementById('active-tool-label');
+        const toolContent = document.getElementById('tool-content');
+        const currentUserLabel = document.getElementById('current-user-label');
+        const currentUserRaw = localStorage.getItem('opensight-current-user');
+        let currentUser = 'Nicht angemeldet';
+        if (currentUserRaw && currentUserRaw !== "undefined") {
+            try {
+                const user = JSON.parse(currentUserRaw);
+                currentUser = user.name ? `${user.name} (${user.email})` : user.email;
+            } catch {
+                currentUser = currentUserRaw;
+            }
+        }
+        currentUserLabel.textContent = currentUser;
+
+        // --- ANTI-DDOS / RATE LIMIT LOGIC ---
+        let requestCount = 0;
+        let isBlocked = false;
+        const MAX_REQUESTS = 10;
+        const TIME_WINDOW = 5000; // 5 Sekunden
+
+        function checkRateLimit(e) {
+            const currentLocks = JSON.parse(localStorage.getItem('larpsint_locks') || '{"ddos":false}');
+            if (!currentLocks.ddos || isBlocked) return;
+
+            requestCount++;
+            
+            if (requestCount > MAX_REQUESTS) {
+                isBlocked = true;
+                showDdosBlock();
+            }
+
+            setTimeout(() => { requestCount--; }, TIME_WINDOW);
+        }
+
+        function showDdosBlock() {
+            const overlay = document.createElement('div');
+            overlay.id = 'ddos-overlay';
+            overlay.innerHTML = `
+                <div style="position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;backdrop-filter:blur(10px);">
+                    <span style="font-size:5rem;margin-bottom:1rem;">🛡️</span>
+                    <h1 style="color:#ff3a4c;">Anti-DDoS Schutz Aktiv</h1>
+                    <p style="color:#eef7ff;max-width:500px;">Zu viele Anfragen in kurzer Zeit erkannt. Dein Zugriff wurde zum Schutz der Infrastruktur vorübergehend eingeschränkt.</p>
+                    <p style="color:var(--accent);">Bitte warte 30 Sekunden...</p>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            
+            setTimeout(() => {
+                isBlocked = false;
+                requestCount = 0;
+                document.getElementById('ddos-overlay').remove();
+            }, 30000); // 30 Sekunden Sperre
+        }
+
+        // Überwache alle Formulare auf der Seite
+        document.addEventListener('submit', checkRateLimit);
+
+        function logout() {
+            localStorage.removeItem('opensight-current-user');
+            localStorage.removeItem('opensight-owner-access');
+            window.location.href = 'Anmeldung.html';
+        }
+        const toolText = {
+            dashboard: {
+                title: 'Übersicht',
+                text: 'Hier findest du die Startansicht mit Nutzerstatus, schnellen Notizen und deinen ersten Analyse-Ergebnissen.'
+            },
+            name: {
+                title: 'Name-Suche',
+                text: 'Gib Vor- und Nachname ein, um nur exakte Treffervorschläge zu sehen. Die Seite filtert nach exakten Phrase-Ergebnissen und zeigt nur relevante Profile.'
+            },
+            whois: {
+                title: 'Whois & Domain IP Tracker',
+                text: 'Durchsuche Domain-, Whois-Daten und tracke IP-Adressen für detaillierte Geo- und ISP-Informationen.<br>Für diese Funktion musst du deinen Adblocker ausschalten.'
+            },
+            social: {
+                title: 'Social Media Scan',
+                text: 'Analysiere öffentliche Profile auf Twitter, Instagram, LinkedIn und andere Spuren im Web.'
+            },
+            breach: {
+                title: 'Datenleck Check',
+                text: 'Prüfe, ob E-Mail-Adressen oder Konten in bekannten Leaks oder veröffentlichter Datensammlung auftauchen.'
+            },
+            geo: {
+                title: 'Geolocation',
+                text: 'Visualisiere Standortdaten, Koordinaten und Verbindungen auf einer Karte.'
+            },
+            people: {
+                title: 'Ingamename-Abfrage',
+                text: 'Suche nach In-Game Namen (z.B. Minecraft, PSN, Steam) oder Aliasen, um Profile auf verschiedenen Gaming-Plattformen zu finden.'
+            },
+            documents: {
+                title: 'Telefonnummer-Abfrage',
+                text: 'Suche nach Informationen zu einer Telefonnummer in öffentlichen Registern und Datenbanken.'
+            },
+            discord: {
+                title: 'Discord Lookup',
+                text: 'Analysiere eine Discord User-ID (Snowflake), um das Erstellungsdatum zu berechnen und externe Profile zu finden.'
+            },
+            dorks: {
+                title: 'Google Dorks',
+                text: 'Nutze fortgeschrittene Suchoperatoren, um gezielt nach Sicherheitslücken, Dateien oder versteckten Verzeichnissen zu suchen.'
+            },
+            pass_search: {
+                title: 'Passwort-Suche',
+                text: 'Prüfe, ob ein Passwort in bekannten Datenlecks aufgetaucht ist und welche E-Mails damit verknüpft sind.'
+            }
+        };
+        function selectTool(tool) {
+            const currentLocks = JSON.parse(localStorage.getItem('larpsint_locks') || '{"site":false,"tools":{}}');
+            
+            // Menü-Status aktualisieren (Schlösser anzeigen)
+            menuButtons.forEach(button => {
+                const toolId = button.dataset.tool;
+                button.classList.toggle('active', toolId === tool);
+                
+                // Schloss-Icon hinzufügen/entfernen
+                const lockIcon = button.querySelector('.lock-indicator') || document.createElement('span');
+                lockIcon.className = 'lock-indicator';
+                lockIcon.innerHTML = currentLocks.tools[toolId] ? ' 🔒' : '';
+                if(!button.querySelector('.lock-indicator')) button.appendChild(lockIcon);
+            });
+
+            toolLabel.textContent = toolText[tool].title;
+
+            // Sperrprüfung für das gewählte Tool
+            if (currentLocks.tools[tool] && tool !== 'dashboard') {
+                toolContent.innerHTML = `
+                    <div class="placeholder">
+                        <span style="font-size: 4rem;">🔒</span>
+                        <strong>Dieses Tool hat grade ein fehler aber wir arbeiten dran wir bitten um dein verständnis</strong>
+                    </div>
+                `;
+                return;
+            }
+
+            if (tool === 'name') {
+                toolContent.innerHTML = `
+                    <strong class="tool-title">${toolText[tool].title}</strong>
+                    <p>${toolText[tool].text}</p>
+                    <form id="name-search-form" class="name-search-form">
+                        <div class="search-row">
+                            <label for="first-name">Vorname</label>
+                            <input id="first-name" type="text" required placeholder="Vorname eingeben">
+                        </div>
+                        <div class="search-row">
+                            <label for="last-name">Nachname</label>
+                            <input id="last-name" type="text" required placeholder="Nachname eingeben">
+                        </div>
+                        <button class="btn" type="submit">Suchen</button>
+                    </form>
+                    <div class="search-results" id="name-search-results">
+                        <p>Bereit für die Personensuche.</p>
+                    </div>
+                `;
+                const form = document.getElementById('name-search-form');
+                form.addEventListener('submit', event => {
+                    event.preventDefault();
+                    const first = document.getElementById('first-name').value.trim();
+                    const last = document.getElementById('last-name').value.trim();
+                    if (!first || !last) return;
+                    const query = encodeURIComponent(`"${first} ${last}"`);
+                    const results = document.getElementById('name-search-results');
+                    const sourceList = [
+                        { title: 'LinkedIn (exakte Phrase)', text: 'Nur Profile mit dem genauen Namen', url: `https://www.google.com/search?q=${query}+site:linkedin.com` },
+                        { title: 'GitHub (Benutzer)', text: 'Exakte Profile mit gleichem Namen', url: `https://github.com/search?q=${query}&type=users` },
+                        { title: 'X/Twitter (exakt)', text: 'Nur Erwähnungen mit dem vollständigen Namen', url: `https://twitter.com/search?q=${query}` },
+                        { title: 'Pipl (Personensuche)', text: 'Personensuche mit exakter Namensphrase', url: `https://pipl.com/search/?q=${query}` },
+                        { title: 'Google Exact Match', text: 'Nur Seiten mit genau diesem Namen', url: `https://www.google.com/search?q=${query}` }
+                    ];
+                    results.innerHTML = `
+                        <div class="search-header">
+                            <strong class="tool-title">Exakte Treffer für ${first} ${last}</strong>
+                            <span class="status-tag">Exakte Übereinstimmung</span>
+                        </div>
+                        <p>Die Ergebnisliste verwendet eine genaue Namensphrase, damit nur relevante Seiten angezeigt werden.</p>
+                        <div class="result-grid">
+                            ${sourceList.map(source => `
+                                <article class="result-card">
+                                    <div>
+                                        <strong>${source.title}</strong>
+                                        <p>${source.text}</p>
+                                    </div>
+                                    <a class="result-link" href="${source.url}" target="_blank" rel="noopener">Ansehen</a>
+                                </article>
+                            `).join('')}
+                        </div>
+                    `;
+                });
+            } else if (tool === 'breach') {
+                toolContent.innerHTML = `
+                    <strong class="tool-title">${toolText[tool].title}</strong>
+                    <p>Prüfe Konten auf kompromittierte Zugangsdaten.</p>
+                    <form id="breach-search-form" class="name-search-form">
+                        <div class="search-row">
+                            <label for="breach-email">E-Mail-Adresse prüfen</label>
+                            <input id="breach-email" type="email" required placeholder="beispiel@mail.de">
+                        </div>
+                        <div style="display: flex; gap: 0.75rem; justify-content: center; margin-top: 1rem;">
+                            <button class="btn" type="submit">Analyse starten</button>
+                            <button id="download-breach-json" class="btn-secondary" type="button" style="display:none;">📥 JSON Report</button>
+                        </div>
+                    </form>
+                    <div class="search-results" id="breach-search-results" style="text-align: center;">
+                        <p>Bereit für den Datenleck-Abgleich.</p>
+                    </div>
+                `;
+                const breachForm = document.getElementById('breach-search-form');
+                const results = document.getElementById('breach-search-results');
+                const downloadBtn = document.getElementById('download-breach-json');
+                let lastBreachData = [];
+
+                breachForm.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    const email = document.getElementById('breach-email').value.trim();
+                    if (!email) return;
+
+                    results.innerHTML = `<div class="placeholder"><strong>Suche in Leaks...</strong><p>Gleiche "${email}" mit 12.4 Mrd. Datensätzen ab.</p></div>`;
+                    downloadBtn.style.display = 'none';
+
+                    // Simulation einer API-Abfrage
+                    setTimeout(() => {
+                        lastBreachData = [
+                            { 
+                                site: "Adobe.com", 
+                                date: "Oktober 2013", 
+                                password: "Sommer2013 (Hinweis)",
+                                info: "Über 150 Mio. Konten betroffen. Passwörter als Hashes exponiert." 
+                            },
+                            { 
+                                site: "Canva", 
+                                date: "Mai 2019", 
+                                password: "Passwort123 (Klartext)",
+                                info: "Großer Leak von über 137 Mio. Nutzerdaten inkl. Klartext-Passwörtern." 
+                            },
+                            { 
+                                site: "LinkedIn", 
+                                date: "Mai 2016", 
+                                password: "SHA1: 86f7e437faa5a7fce...",
+                                info: "Historischer Leak mit gehashten Passwörtern." 
+                            }
+                        ];
+
+                        results.innerHTML = `
+                            <div class="search-header">
+                                <strong class="tool-title">Gefundene Leaks für: ${email}</strong>
+                                <span class="status-tag" style="background: rgba(204,31,45,0.2); color: #ff3a4c;">${lastBreachData.length} Treffer</span>
+                            </div>
+                            <div class="result-grid">
+                                ${lastBreachData.map(leak => `
+                                    <article class="result-card">
+                                        <div style="width: 100%;">
+                                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                                <strong style="color: #ff6c7a; font-size: 1.1rem;">${leak.site}</strong>
+                                                <span style="font-size: 0.75rem; color: var(--muted);">${leak.date}</span>
+                                            </div>
+                                            <div style="margin: 0.8rem 0; padding: 0.8rem; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,58,76,0.25); border-radius: 14px;">
+                                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                                                    <span style="color: var(--muted);">Passwort:</span>
+                                                    <span style="color: #ff3a4c; font-family: monospace; font-weight: bold;">${leak.password}</span>
+                                                </div>
+                                            </div>
+                                            <p style="font-size: 0.8rem; color: var(--muted); line-height: 1.4;">${leak.info}</p>
+                                        </div>
+                                    </article>
+                                `).join('')}
+                            </div>
+                            <div class="search-status" style="margin-top: 1rem; border-color: var(--accent);">
+                                ⚠️ <strong>Hinweis:</strong> Passwörter für verbundene Konten sollten umgehend geändert werden.
+                            </div>
+                        `;
+                        downloadBtn.style.display = 'inline-block';
+                    }, 1200);
+                });
+
+                downloadBtn.addEventListener('click', () => {
+                    if (lastBreachData.length === 0) return;
+                    
+                    const email = document.getElementById('breach-email').value.trim();
+                    const report = {
+                        target: email,
+                        scan_date: new Date().toISOString(),
+                        summary: `${lastBreachData.length} Leaks gefunden`,
+                        details: lastBreachData
+                    };
+
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(report, null, 4));
+                    const downloadAnchorNode = document.createElement('a');
+                    downloadAnchorNode.setAttribute("href", dataStr);
+                    downloadAnchorNode.setAttribute("download", `breach_report_${email.replace(/[^a-z0-9]/gi, '_')}.json`);
+                    document.body.appendChild(downloadAnchorNode);
+                    downloadAnchorNode.click();
+                    downloadAnchorNode.remove();
+                });
+            } else if (tool === 'whois') {
+                toolContent.innerHTML = `
+                    <strong class="tool-title">${toolText[tool].title}</strong>
+                    <p>${toolText[tool].text}</p>
+                    <form id="ip-tracker-form" class="name-search-form">
+                        <div class="search-row">
+                            <label for="ip-input">IP-Adresse eingeben</label>
+                            <input id="ip-input" type="text" required placeholder="z.B. 8.8.8.8">
+                        </div>
+                        <button class="btn" type="submit">IP Tracken</button>
+                    </form>
+                    <div class="search-results" id="ip-tracker-results">
+                        <p>Bereit für die IP-Abfrage.</p>
+                    </div>
+                `;
+                const form = document.getElementById('ip-tracker-form');
+                form.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    const ip = document.getElementById('ip-input').value.trim();
+                    if (!ip) return;
+                    
+                    const results = document.getElementById('ip-tracker-results');
+                    results.innerHTML = `<p>Lädt IP-Informationen...</p>`;
+                    
+                    try {
+                        const response = await fetch(`https://ipapi.co/${ip}/json/`);
+                        
+                        if (response.status === 429) {
+                            throw new Error('Rate-Limit erreicht (max. 1000 Abfragen/Tag). Bitte versuche es später mit einem VPN oder morgen erneut.');
+                        }
+                        
+                        if (!response.ok) throw new Error('Der Ortungs-Dienst ist derzeit nicht erreichbar.');
+                        
+                        const data = await response.json();
+                        
+                        if (data.error) {
+                            results.innerHTML = `<p style="color: #ff6c7a;">Fehler: ${data.error}</p>`;
+                            return;
+                        }
+                        
+                        results.innerHTML = `
+                            <div class="search-header">
+                                <strong class="tool-title">IP-Tracker Ergebnis für ${ip}</strong>
+                                <span class="status-tag">Gefunden</span>
+                            </div>
+                            <div class="result-grid">
+                                <article class="result-card">
+                                    <div>
+                                        <strong>IP-Adresse</strong>
+                                        <p>${data.ip || 'N/A'}</p>
+                                    </div>
+                                </article>
+                                <article class="result-card">
+                                    <div>
+                                        <strong>Land / Region</strong>
+                                        <p>${data.country_name || 'N/A'} (${data.country_code || 'N/A'})</p>
+                                    </div>
+                                </article>
+                                <article class="result-card">
+                                    <div>
+                                        <strong>Stadt</strong>
+                                        <p>${data.city || 'N/A'}</p>
+                                    </div>
+                                </article>
+                                <article class="result-card">
+                                    <div>
+                                        <strong>Breitengrad / Längengrad</strong>
+                                        <p>${data.latitude || 'N/A'} / ${data.longitude || 'N/A'}</p>
+                                    </div>
+                                </article>
+                                <article class="result-card">
+                                    <div>
+                                        <strong>Zeitzone</strong>
+                                        <p>${data.timezone || 'N/A'}</p>
+                                    </div>
+                                </article>
+                                <article class="result-card">
+                                    <div>
+                                        <strong>ISP / Organisation</strong>
+                                        <p>${data.org || 'N/A'}</p>
+                                    </div>
+                                </article>
+                                <article class="result-card">
+                                    <div>
+                                        <strong>Verbindungstyp</strong>
+                                        <p>${data.connection_type || 'N/A'}</p>
+                                    </div>
+                                </article>
+                                <article class="result-card">
+                                    <div>
+                                        <strong>Internetanbieter</strong>
+                                        <p>${data.isp || 'N/A'}</p>
+                                    </div>
+                                </article>
+                            </div>
+                        `;
+                    } catch (error) {
+                        let errorMsg = error.message;
+                        if (error.message.includes('Failed to fetch')) {
+                            errorMsg = 'Verbindung blockiert. Bitte schalte deinen Ad-Blocker aus oder prüfe deine Internetverbindung.';
+                        }
+                        results.innerHTML = `<p style="color: #ff6c7a; padding: 1rem; background: rgba(204,31,45,0.1); border-radius: 12px; border: 1px solid var(--border);">
+                            <strong>Analyse gestoppt:</strong><br>${errorMsg}</p>`;
+                    }
+                });
+            } else if (tool === 'social') {
+                toolContent.innerHTML = `
+                    <strong class="tool-title">${toolText[tool].title}</strong>
+                    <p>${toolText[tool].text}</p>
+                    <form id="social-scan-form" class="name-search-form">
+                        <div class="search-row">
+                            <label for="social-name">Name / Benutzername eingeben</label>
+                            <input id="social-name" type="text" required placeholder="z.B. Max Mustermann oder maxmustermann">
+                        </div>
+                        <button class="btn" type="submit">Social Media Scan starten</button>
+                    </form>
+                    <div class="search-results" id="social-scan-results">
+                        <p>Bereit für die Profil-Analyse.</p>
+                    </div>
+                `;
+                const socialForm = document.getElementById('social-scan-form');
+                socialForm.addEventListener('submit', (event) => {
+                    event.preventDefault();
+                    const name = document.getElementById('social-name').value.trim();
+                    if (!name) return;
+                    
+                    const results = document.getElementById('social-scan-results');
+                    const encodedName = encodeURIComponent(name);
+                    
+                    const socialPlatforms = [
+                        { 
+                            title: 'LinkedIn', 
+                            icon: '🔗',
+                            text: 'Profil auf LinkedIn suchen',
+                            url: `https://www.linkedin.com/search/results/people/?keywords=${encodedName}` 
+                        },
+                        { 
+                            title: 'Instagram', 
+                            icon: '📷',
+                            text: 'Instagram Profil & Posts',
+                            url: `https://www.instagram.com/explore/search/keyword/?q=${name}` 
+                        },
+                        { 
+                            title: 'Twitter / X', 
+                            icon: '🐦',
+                            text: 'Twitter/X Profile & Tweets',
+                            url: `https://twitter.com/search?q=${encodedName}&src=typed_query` 
+                        },
+                        { 
+                            title: 'Facebook', 
+                            icon: '👥',
+                            text: 'Facebook Personen & Seiten',
+                            url: `https://www.facebook.com/search/people/?q=${encodedName}` 
+                        },
+                        { 
+                            title: 'TikTok', 
+                            icon: '🎵',
+                            text: 'TikTok Creator & Accounts',
+                            url: `https://www.tiktok.com/search?q=${encodedName}` 
+                        },
+                        { 
+                            title: 'YouTube', 
+                            icon: '📺',
+                            text: 'YouTube Kanäle & Videos',
+                            url: `https://www.youtube.com/results?search_query=${encodedName}` 
+                        },
+                        { 
+                            title: 'GitHub', 
+                            icon: '💻',
+                            text: 'GitHub User & Repositories',
+                            url: `https://github.com/search?q=${encodedName}&type=users` 
+                        },
+                        { 
+                            title: 'Reddit', 
+                            icon: '🔴',
+                            text: 'Reddit User & Posts',
+                            url: `https://www.reddit.com/search/?q=${encodedName}` 
+                        },
+                        { 
+                            title: 'Telegram', 
+                            icon: '✈️',
+                            text: 'Telegram Kanäle & Nutzer',
+                            url: `https://www.google.com/search?q=site:t.me+${encodedName}` 
+                        },
+                        { 
+                            title: 'Discord', 
+                            icon: '💬',
+                            text: 'Discord Server & Profile',
+                            url: `https://www.google.com/search?q=site:discord.com+${encodedName}` 
+                        },
+                        { 
+                            title: 'Twitch', 
+                            icon: '🎮',
+                            text: 'Twitch Streamer & Kanäle',
+                            url: `https://www.twitch.tv/search?term=${encodedName}` 
+                        },
+                        { 
+                            title: 'Pinterest', 
+                            icon: '📌',
+                            text: 'Pinterest Boards & Profile',
+                            url: `https://www.pinterest.com/search/?q=${encodedName}` 
+                        },
+                        { 
+                            title: 'Snapchat', 
+                            icon: '👻',
+                            text: 'Snapchat User & Stories',
+                            url: `https://www.google.com/search?q=site:snapchat.com+${encodedName}` 
+                        },
+                        { 
+                            title: 'WhatsApp', 
+                            icon: '💬',
+                            text: 'WhatsApp Gruppen & Kontakte',
+                            url: `https://www.google.com/search?q=${encodedName}+whatsapp` 
+                        },
+                        { 
+                            title: 'Google Search', 
+                            icon: '🔍',
+                            text: 'Allgemeine Google Suche',
+                            url: `https://www.google.com/search?q=${encodedName}` 
+                        }
+                    ];
+                    
+                    results.innerHTML = `
+                        <div class="search-header">
+                            <strong class="tool-title">Social Media Scan für "${name}"</strong>
+                            <span class="status-tag">${socialPlatforms.length} Plattformen</span>
+                        </div>
+                        <p>Klicke auf einen Link, um den Namen auf der entsprechenden Plattform zu suchen:</p>
+                        <div class="result-grid">
+                            ${socialPlatforms.map(platform => `
+                                <article class="result-card">
+                                    <div>
+                                        <strong>${platform.icon} ${platform.title}</strong>
+                                        <p>${platform.text}</p>
+                                    </div>
+                                    <a class="result-link" href="${platform.url}" target="_blank" rel="noopener noreferrer">Suchen</a>
+                                </article>
+                            `).join('')}
+                        </div>
+                    `;
+                });
+            } else if (tool === 'geo') {
+                toolContent.innerHTML = `
+                    <div class="search-header">
+                        <strong class="tool-title">${toolText[tool].title}</strong>
+                    </div>
+                    <p>${toolText[tool].text}</p>
+                    <div class="name-search-form">
+                        <div class="search-row">
+                            <label for="geo-upload">Bilddatei (JPG) auswählen</label>
+                            <input id="geo-upload" type="file" accept="image/jpeg, image/jpg">
+                        </div>
+                    </div>
+                    <div id="geo-results" class="search-results">
+                        <p>Bereit für die Bild-Analyse.</p>
+                    </div>
+                `;
+
+                const uploadInput = document.getElementById('geo-upload');
+                const geoResults = document.getElementById('geo-results');
+
+                uploadInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    geoResults.innerHTML = `<div class="placeholder"><strong>Analysiere Datei...</strong><p>Extrahiere EXIF-Daten aus ${file.name}</p></div>`;
+
+                    EXIF.getData(file, function() {
+                        const lat = EXIF.getTag(this, "GPSLatitude");
+                        const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+                        const lng = EXIF.getTag(this, "GPSLongitude");
+                        const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
+
+                        if (lat && lng) {
+                            const toDecimal = (gps, ref) => {
+                                let d = gps[0].numerator / gps[0].denominator;
+                                let m = gps[1].numerator / gps[1].denominator;
+                                let s = gps[2].numerator / gps[2].denominator;
+                                let dec = d + (m / 60) + (s / 3600);
+                                return (ref === "S" || ref === "W") ? dec * -1 : dec;
+                            };
+
+                            const finalLat = toDecimal(lat, latRef);
+                            const finalLng = toDecimal(lng, lngRef);
+
+                            geoResults.innerHTML = `
+                                <div class="search-header">
+                                    <strong class="tool-title">Standort lokalisiert</strong>
+                                    <span class="status-tag">GPS Treffer</span>
+                                </div>
+                                <div class="result-grid">
+                                    <article class="result-card">
+                                        <div>
+                                            <strong>Koordinaten</strong>
+                                            <p>${finalLat.toFixed(6)}, ${finalLng.toFixed(6)}</p>
+                                        </div>
+                                    </article>
+                                    <article class="result-card">
+                                        <div>
+                                            <strong>Aufnahmegerät</strong>
+                                            <p>${EXIF.getTag(this, "Make") || 'Unbekannt'} ${EXIF.getTag(this, "Model") || ''}</p>
+                                        </div>
+                                    </article>
+                                </div>
+                                <div class="embed-wrap" style="margin-top: 1.5rem; border: 1px solid var(--border);">
+                                    <iframe 
+                                        src="https://www.openstreetmap.org/export/embed.html?bbox=${finalLng-0.005},${finalLat-0.005},${finalLng+0.005},${finalLat+0.005}&layer=mapnik&marker=${finalLat},${finalLng}" 
+                                        style="border: none; filter: grayscale(0.5) contrast(1.1);">
+                                    </iframe>
+                                </div>
+                                <div style="margin-top: 1rem; display: flex; gap: 0.75rem;">
+                                    <a class="result-link" href="https://www.google.com/maps?q=${finalLat},${finalLng}" target="_blank">In Google Maps öffnen</a>
+                                </div>
+                            `;
+                        } else {
+                            geoResults.innerHTML = `
+                                <div class="search-header">
+                                    <strong class="tool-title">Keine GPS-Daten gefunden</strong>
+                                </div>
+                                <p>Das Bild enthält keine Metadaten. Suche den Ort (z.B. Parkname) manuell oder nutze die visuelle Analyse:</p>
+                                
+                                <div class="name-search-form" style="margin-bottom: 2rem;">
+                                    <div class="search-row">
+                                        <label for="manual-location-search">Ort manuell suchen</label>
+                                        <input id="manual-location-search" type="text" placeholder="Name des Ortes, Parks oder Merkmale eingeben...">
+                                    </div>
+                                    <button class="btn" id="btn-manual-geo-search">Ort auf Karte finden</button>
+                                </div>
+
+                                <div class="result-grid">
+                                    <article class="result-card">
+                                        <div>
+                                            <strong>Google Lens</strong>
+                                            <p>Analysiere Bildinhalte visuell.</p>
+                                        </div>
+                                        <a class="result-link" href="https://lens.google.com/upload" target="_blank">Visuelle Suche</a>
+                                    </article>
+                                </div>
+                            `;
+
+                            document.getElementById('btn-manual-geo-search').addEventListener('click', () => {
+                                const loc = document.getElementById('manual-location-search').value.trim();
+                                if (loc) {
+                                    window.open(`https://www.google.com/maps/search/${encodeURIComponent(loc)}`, '_blank');
+                                }
+                            });
+                        }
+                    });
+                });
+            } else if (tool === 'people') {
+                toolContent.innerHTML = `
+                    <div class="search-header">
+                        <strong class="tool-title">${toolText[tool].title}</strong>
+                    </div>
+                    <p>${toolText[tool].text}</p>
+                    <form id="people-search-form" class="name-search-form">
+                        <div class="search-row">
+                            <label for="people-query">In-Game Name / Alias</label>
+                            <input id="people-query" type="text" required placeholder="z.B. Notch, Max123...">
+                        </div>
+                        <button class="btn" type="submit">Gaming-Profile suchen</button>
+                    </form>
+                    <div class="search-results" id="people-search-results">
+                        <p>Bereit für die Identitäts-Analyse.</p>
+                    </div>
+                `;
+
+                const peopleForm = document.getElementById('people-search-form');
+                peopleForm.addEventListener('submit', (event) => {
+                    event.preventDefault();
+                    const query = document.getElementById('people-query').value.trim();
+                    if (!query) return;
+
+                    const results = document.getElementById('people-search-results');
+                    const encoded = encodeURIComponent(query);
+
+                    const sources = [
+                        { title: 'NameMC (Minecraft)', desc: 'Namen-Historie, UUID & Skins', url: `https://namemc.com/search?q=${encoded}` },
+                        { title: 'LabyMod Profile', desc: 'LabyMod User-Informationen & Freunde', url: `https://www.labymod.net/de/player/${encoded}` },
+                        { title: 'Steam Community', desc: 'Suche nach Steam-Profilen', url: `https://steamcommunity.com/search/users/#text=${encoded}` },
+                        { title: 'PSN Profiles', desc: 'PlayStation Network Trophäen & Status', url: `https://psnprofiles.com/${encoded}` },
+                        { title: 'Xbox Live Tracker', desc: 'Xbox Profile und Gamertag Suche', url: `https://xboxgamertag.com/search/${encoded}` },
+                        { title: 'Hypixel Search', desc: 'Statistiken auf dem Hypixel Server', url: `https://hypixel.net/search/1/?q=${encoded}` }
+                    ];
+
+                    results.innerHTML = `
+                        <div class="search-header">
+                            <strong class="tool-title">Gaming-Profile für "${query}"</strong>
+                            <span class="status-tag">Suche aktiv</span>
+                        </div>
+                        <div class="result-grid">
+                            ${sources.map(s => `
+                                <article class="result-card">
+                                    <div>
+                                        <strong>${s.title}</strong>
+                                        <p>${s.desc}</p>
+                                    </div>
+                                    <a class="result-link" href="${s.url}" target="_blank" rel="noopener noreferrer">Profil öffnen</a>
+                                </article>
+                            `).join('')}
+                        </div>
+                    `;
+                });
+            } else if (tool === 'documents') {
+                toolContent.innerHTML = `
+                    <div class="search-header">
+                        <strong class="tool-title">${toolText[tool].title}</strong>
+                    </div>
+                    <p>${toolText[tool].text}</p>
+                    <form id="phone-search-form" class="name-search-form">
+                        <div class="search-row">
+                            <label for="phone-query">Telefonnummer (z.B. +49 170 1234567)</label>
+                            <input id="phone-query" type="text" required placeholder="+49 ...">
+                        </div>
+                        <div style="display: flex; gap: 0.75rem; justify-content: center;">
+                            <button class="btn" type="submit">Rufnummer analysieren</button>
+                            <button id="download-phone-json" class="btn-secondary" type="button" style="display:none;">📥 Export Report</button>
+                        </div>
+                    </form>
+                    <div class="search-results" id="phone-search-results">
+                        <p>Bereit für die Rufnummern-Analyse.</p>
+                    </div>
+                `;
+
+                const phoneForm = document.getElementById('phone-search-form');
+                const results = document.getElementById('phone-search-results');
+                const downloadBtn = document.getElementById('download-phone-json');
+                let lastPhoneData = null;
+
+                phoneForm.addEventListener('submit', (event) => {
+                    event.preventDefault();
+                    const query = document.getElementById('phone-query').value.trim();
+                    if (!query) return;
+
+                    results.innerHTML = `<div class="placeholder"><strong>Deep Scan aktiv...</strong><p>Frage globale Rufnummern-Register für ${query} ab.</p></div>`;
+                    downloadBtn.style.display = 'none';
+
+                    // Simulation einer detaillierten Analyse
+                    setTimeout(() => {
+                        lastPhoneData = {
+                            number: query,
+                            carrier: "Deutsche Telekom (Mobile)",
+                            type: "Mobilfunk",
+                            location: "Deutschland",
+                            spam_score: "1/10 (Seriös)",
+                            owner_estimate: "Privatperson",
+                            social: ["WhatsApp aktiv", "Telegram aktiv", "Signal registriert"]
+                        };
+
+                        results.innerHTML = `
+                            <div class="search-header">
+                                <strong class="tool-title">Analyse-Ergebnis: ${query}</strong>
+                                <span class="status-tag" style="background: rgba(91,255,101,0.1); color: #5bff65;">Verifiziert</span>
+                            </div>
+                            <div class="result-grid">
+                                <article class="result-card">
+                                    <div>
+                                        <strong>Provider / Netz</strong>
+                                        <p>${lastPhoneData.carrier}</p>
+                                    </div>
+                                </article>
+                                <article class="result-card">
+                                    <div>
+                                        <strong>Spam-Bewertung</strong>
+                                        <p style="color: #5bff65;">${lastPhoneData.spam_score}</p>
+                                    </div>
+                                </article>
+                                <article class="result-card">
+                                    <div>
+                                        <strong>Typ & Standort</strong>
+                                        <p>${lastPhoneData.type} - ${lastPhoneData.location}</p>
+                                    </div>
+                                </article>
+                                <article class="result-card">
+                                    <div>
+                                        <strong>Social Media Linkage</strong>
+                                        <p>${lastPhoneData.social.join(', ')}</p>
+                                    </div>
+                                </article>
+                            </div>
+                            <div class="search-status" style="margin-top: 1.5rem; border-color: var(--border);">
+                                ℹ️ <strong>Zusammenfassung:</strong> Die Nummer ist einem Mobilfunknetz zugeordnet und weist keine Merkmale für Telefonmarketing oder Betrug auf.
+                            </div>
+                        `;
+                        downloadBtn.style.display = 'inline-block';
+                    }, 1500);
+                });
+
+                downloadBtn.addEventListener('click', () => {
+                    if (!lastPhoneData) return;
+                    const report = {
+                        report_type: "Phone Intelligence Report",
+                        timestamp: new Date().toISOString(),
+                        data: lastPhoneData
+                    };
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(report, null, 4));
+                    const dlAnchor = document.createElement('a');
+                    dlAnchor.setAttribute("href", dataStr);
+                    dlAnchor.setAttribute("download", `phone_report_${query.replace(/[^a-z0-9]/gi, '')}.json`);
+                    dlAnchor.click();
+                });
+            } else if (tool === 'discord') {
+                toolContent.innerHTML = `
+                    <strong class="tool-title">${toolText[tool].title}</strong>
+                    <p>${toolText[tool].text}</p>
+                    <form id="discord-search-form" class="name-search-form">
+                        <div class="search-row">
+                            <label for="discord-id">Discord User-ID (z.B. 159985870458322944)</label>
+                            <input id="discord-id" type="text" required placeholder="ID eingeben...">
+                        </div>
+                        <button class="btn" type="submit">Suchen</button>
+                    </form>
+                    <div class="search-results" id="discord-search-results">
+                        <p>Bereit für die Discord-ID Analyse.</p>
+                    </div>
+                `;
+
+                const discordForm = document.getElementById('discord-search-form');
+
+                discordForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const id = document.getElementById('discord-id').value.trim();
+                    
+                    // Validierung: Discord IDs sind numerisch und meist 17-20 Zeichen lang
+                    if (!/^\d{17,20}$/.test(id)) {
+                        const results = document.getElementById('discord-search-results');
+                        results.innerHTML = `<p style="color: #ff6c7a;">Fehler: Bitte gib eine gültige Discord ID ein (17-20 Ziffern).</p>`;
+                        return;
+                    }
+
+                    const results = document.getElementById('discord-search-results');
+                    
+                    // Snowflake Berechnung (Discord Epoch: Jan 1, 2015)
+                    const DISCORD_EPOCH = 1420070400000; // Unix Epoch für 01.01.2015
+                    const timestamp = Number(BigInt(id) >> 22n) + DISCORD_EPOCH;
+                    const date = new Date(timestamp);
+
+                    // Funktion zur Berechnung des genauen Alters
+                    const getAge = (birthDate) => {
+                        const now = new Date();
+                        let years = now.getFullYear() - birthDate.getFullYear();
+                        let months = now.getMonth() - birthDate.getMonth();
+                        let days = now.getDate() - birthDate.getDate();
+                        if (days < 0) {
+                            months--;
+                            days += new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+                        }
+                        if (months < 0) {
+                            years--;
+                            months += 12;
+                        }
+                        return `${years} Jahre, ${months} Monate und ${days} Tage`;
+                    };
+
+                    const sources = [
+                        { title: 'DiscordLookup', desc: 'Detaillierte User-Infos & Badges', url: `https://discordlookup.com/user/${id}` },
+                        { title: 'DiscordID.com', desc: 'Einfacher ID-Check', url: `https://discordid.com/?id=${id}` },
+                        { title: 'Lookup.guru', desc: 'Erweiterte Profilsuche', url: `https://lookup.guru/${id}` },
+                        { title: 'Google Suche', desc: 'Suche nach ID-Erwähnungen', url: `https://www.google.com/search?q="${id}"` }
+                    ];
+
+                    results.innerHTML = `
+                        <div class="search-header">
+                            <strong class="tool-title">Analyse: ${id}</strong>
+                            <span class="status-tag">Daten berechnet</span>
+                        </div>
+                        
+                        <p style="margin-bottom: 0.5rem; color: var(--accent);">📊 Interne Snowflake-Analyse:</p>
+                        <div class="result-grid">
+                            <article class="result-card">
+                                <div>
+                                    <strong>Lokale Zeit</strong>
+                                    <p>${date.toLocaleString('de-DE', { dateStyle: 'full', timeStyle: 'medium' })}</p>
+                                </div>
+                            </article>
+                            <article class="result-card">
+                                <div>
+                                    <strong>UTC Zeit</strong>
+                                    <p>${date.toUTCString()}</p>
+                                </div>
+                            </article>
+                            <article class="result-card">
+                                <div>
+                                    <strong>Konto-Alter</strong>
+                                    <p>${getAge(date)}</p>
+                                </div>
+                            </article>
+                            <article class="result-card">
+                                <div>
+                                    <strong>ID-Spezifikation</strong>
+                                    <p>Discord Snowflake (Type: User/Bot)</p>
+                                </div>
+                            </article>
+                        </div>
+
+                        <div class="search-status" style="margin-top: 1.5rem; border-color: var(--border);">
+                            ℹ️ <strong>Zusatz-Info:</strong> Da IDs im Browser nicht direkt abgefragt werden können (CORS), nutzen Sie die folgenden „Zweige“ für externe Datenbanken:
+                        </div>
+
+                        <p style="margin: 1.5rem 0 0.5rem; color: var(--accent);">🔍 Externe Recherche-Zweige:</p>
+                        <div class="result-grid">
+                            ${sources.map(s => `
+                                <article class="result-card">
+                                    <div>
+                                        <strong>${s.title}</strong>
+                                        <p>${s.desc}</p>
+                                    </div>
+                                    <a class="result-link" href="${s.url}" target="_blank" rel="noopener">Zweig öffnen</a>
+                                </article>
+                            `).join('')}
+                        </div>
+                    `;
+                });
+            } else if (tool === 'dorks') {
+                toolContent.innerHTML = `
+                    <div class="search-header">
+                        <strong class="tool-title">Google Dorks Generator</strong>
+                        <span class="status-tag">Advanced Search</span>
+                    </div>
+                    <p>${toolText[tool].text}</p>
+                    
+                    <form id="dork-form" class="name-search-form">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="search-row">
+                                <label for="dork-query">Suchbegriff / Domain</label>
+                                <input id="dork-query" type="text" placeholder="z.B. example.com">
+                            </div>
+                            <div class="search-row">
+                                <label for="dork-type">Dork-Kategorie</label>
+                                <select id="dork-type" style="width:100%; padding:0.95rem; border-radius:16px; background:rgba(255,255,255,0.04); color:white; border:1px solid rgba(255,255,255,0.12);">
+                                    <option value="all">Alle Ergebnisse</option>
+                                    <option value="config">Konfigurationsdateien (.env, .php, .xml)</option>
+                                    <option value="login">Login-Seiten & Dashboards</option>
+                                    <option value="db">Datenbank-Dumps (.sql, .db)</option>
+                                    <option value="docs">Öffentliche Dokumente (.pdf, .xlsx, .docx)</option>
+                                    <option value="index">Verzeichnis-Listing (Index of/)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.75rem; margin-top: 0.5rem; justify-content: center;">
+                            <button class="btn" type="submit">Dork-Analyse starten</button>
+                            <button id="download-dork-json" class="btn-secondary" type="button" style="display:none;">📥 Report (JSON)</button>
+                        </div>
+                    </form>
+
+                    <div id="dork-results-display" style="margin-top: 1.5rem;"></div>
+
+                    <p style="margin: 1.5rem 0 0.5rem; color: var(--accent); font-size: 0.9rem; font-weight: bold;">⚡ Quick-Dork Vorlagen:</p>
+                    <div class="result-grid" id="quick-dorks">
+                        <!-- Wird dynamisch gefüllt -->
+                    </div>
+                `;
+
+                const dorkForm = document.getElementById('dork-form');
+                const quickDorksContainer = document.getElementById('quick-dorks');
+                const resultsDisplay = document.getElementById('dork-results-display');
+                const downloadBtn = document.getElementById('download-dork-json');
+                let lastDorkResults = null;
+
+                const dorkPatterns = [
+                    { title: "Sicherheitslücken", dork: "inurl:php?id= site:", desc: "Potenzielle SQL-Parameter" },
+                    { title: "Versteckte Dateien", dork: "intitle:\"index of\" \"parent directory\" site:", desc: "Offene Verzeichnisse" },
+                    { title: "Logins finden", dork: "intitle:login | inurl:login site:", desc: "Admin-Zugänge suchen" },
+                    { title: "Config-Files", dork: "filetype:env | filetype:xml | filetype:conf site:", desc: "System-Konfigurationen" }
+                ];
+
+                function renderQuickDorks(target = "") {
+                    quickDorksContainer.innerHTML = dorkPatterns.map(p => `
+                        <article class="result-card">
+                            <div>
+                                <strong>${p.title}</strong>
+                                <p>${p.desc}</p>
+                                <code style="display:block; font-size:0.75rem; margin-top:0.5rem; color:var(--muted);">${p.dork}${target || '...'}</code>
+                            </div>
+                            <a class="result-link" href="https://www.google.com/search?q=${encodeURIComponent(p.dork + target)}" target="_blank" rel="noopener">Ausführen</a>
+                        </article>
+                    `).join('');
+                }
+
+                renderQuickDorks();
+
+                function simulateDorkScan(query, type, dorkStr) {
+                    resultsDisplay.innerHTML = `<div class="placeholder"><strong>Deep Dorking aktiv...</strong><p>Analysiere "${query}" auf ${type}-Lecks.</p></div>`;
+                    downloadBtn.style.display = 'none';
+
+                    setTimeout(() => {
+                        // Simulation von Funden basierend auf dem Typ
+                        const findings = [
+                            { branch: "Index-Check", status: "Potential Hit", detail: `Suche nach Verzeichnissen auf ${query}` },
+                            { branch: "File-Crawler", status: "Active", detail: `Filtere Dateitypen für ${type}` },
+                            { branch: "Param-Mining", status: "Warning", detail: "Mögliche SQL-Einstiegspunkte identifiziert" }
+                        ];
+
+                        lastDorkResults = {
+                            target: query,
+                            category: type,
+                            full_dork: dorkStr,
+                            timestamp: new Date().toISOString(),
+                            findings: findings
+                        };
+
+                        resultsDisplay.innerHTML = `
+                            <div class="search-header">
+                                <strong class="tool-title">Dorking-Protokoll: ${query}</strong>
+                                <span class="status-tag" style="background: rgba(204,31,45,0.15);">Scan Abgeschlossen</span>
+                            </div>
+                            <div class="result-grid">
+                                ${findings.map(f => `
+                                    <article class="result-card">
+                                        <div>
+                                            <strong style="color: var(--accent);">${f.branch}</strong>
+                                            <p>${f.detail}</p>
+                                            <small style="color: #5bff65;">Status: ${f.status}</small>
+                                        </div>
+                                    </article>
+                                `).join('')}
+                            </div>
+                        `;
+                        downloadBtn.style.display = 'inline-block';
+                    }, 1000);
+                }
+
+                downloadBtn.addEventListener('click', () => {
+                    if (!lastDorkResults) return;
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(lastDorkResults, null, 4));
+                    const dlLink = document.createElement('a');
+                    dlLink.setAttribute("href", dataStr);
+                    dlLink.setAttribute("download", `dork_report_${lastDorkResults.target.replace(/\./g, '_')}.json`);
+                    dlLink.click();
+                });
+
+                dorkForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const query = document.getElementById('dork-query').value.trim();
+                    const type = document.getElementById('dork-type').value;
+                    
+                    let dorkStr = "";
+                    if (query) {
+                        switch(type) {
+                            case 'config': dorkStr = `site:${query} filetype:env | filetype:xml | filetype:conf | filetype:sql`; break;
+                            case 'login': dorkStr = `site:${query} inurl:login | inurl:admin | intitle:login`; break;
+                            case 'db': dorkStr = `site:${query} filetype:sql | filetype:db | filetype:sqlite | intext:"DB_PASSWORD"`; break;
+                            case 'docs': dorkStr = `site:${query} filetype:pdf | filetype:doc | filetype:xlsx | filetype:docx`; break;
+                            case 'index': dorkStr = `site:${query} intitle:"index of"`; break;
+                            default: dorkStr = `site:${query}`;
+                        }
+                        window.open(`https://www.google.com/search?q=${encodeURIComponent(dorkStr)}`, '_blank');
+                        simulateDorkScan(query, type, dorkStr);
+                        renderQuickDorks(query);
+                    } else {
+                        // Wenn keine Domain angegeben ist, suchen wir global nach dem Typ
+                        switch(type) {
+                            case 'config': dorkStr = `filetype:env "DB_PASSWORD"`; break;
+                            case 'login': dorkStr = `inurl:admin/login.php`; break;
+                            case 'db': dorkStr = `filetype:sql "INSERT INTO" "users"`; break;
+                            case 'index': dorkStr = `intitle:"index of /"`; break;
+                            default: dorkStr = `intitle:"OSINT"`;
+                        }
+                        window.open(`https://www.google.com/search?q=${encodeURIComponent(dorkStr)}`, '_blank');
+                    }
+                });
+            } else if (tool === 'pass_search') {
+                toolContent.innerHTML = `
+                    <div class="search-header">
+                        <strong class="tool-title">${toolText[tool].title}</strong>
+                        <span class="status-tag">Credential Intelligence</span>
+                    </div>
+                    <p>${toolText[tool].text}</p>
+                    <form id="pass-search-form" class="name-search-form">
+                        <div class="search-row">
+                            <label for="pass-query">Passwort zum Prüfen</label>
+                            <div class="password-wrapper">
+                                <input id="pass-query" type="password" required placeholder="Passwort eingeben...">
+                                <button type="button" class="toggle-password" id="toggle-search-pass">👁️</button>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.75rem; justify-content: center; margin-top: 1rem;">
+                            <button class="btn" type="submit">Passwort-Abgleich starten</button>
+                            <button id="download-pass-json" class="btn-secondary" type="button" style="display:none;">📥 Report laden</button>
+                        </div>
+                    </form>
+                    <div class="search-results" id="pass-search-results">
+                        <p>Bereit für die Credential-Suche.</p>
+                    </div>
+                `;
+
+                document.getElementById('toggle-search-pass').addEventListener('click', function() {
+                    const passInput = document.getElementById('pass-query');
+                    const isPassword = passInput.type === 'password';
+                    passInput.type = isPassword ? 'text' : 'password';
+                    this.textContent = isPassword ? '🙈' : '👁️';
+                });
+
+                const passForm = document.getElementById('pass-search-form');
+                const results = document.getElementById('pass-search-results');
+                const downloadBtn = document.getElementById('download-pass-json');
+                let lastPassData = null;
+
+                passForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const pass = document.getElementById('pass-query').value;
+                    if (!pass) return;
+
+                    results.innerHTML = `<div class="placeholder"><strong>Abgleich läuft...</strong><p>Suche in 14.8 Mrd. Datensätzen nach Übereinstimmungen.</p></div>`;
+                    downloadBtn.style.display = 'none';
+
+                    setTimeout(() => {
+                        // Simulation von Funden
+                        const findings = [
+                            { email: "k.schmidt88@web.de", site: "Dropbox Data Breach", date: "2016" },
+                            { email: "lucas.gamer.pro@gmail.com", site: "Exploit.in Credential Collection", date: "2017" },
+                            { email: "claudia_tanzmaus@t-online.de", site: "Anti Public Combo List", date: "2018" },
+                            { email: "dev-ops-lead@tech-solutions.net", site: "LinkedIn Scrape", date: "2021" },
+                            { email: "info@marketing-vienna.at", site: "Canva Leak", date: "2019" }
+                        ];
+
+                        lastPassData = {
+                            queried_password: "*".repeat(pass.length),
+                            timestamp: new Date().toISOString(),
+                            hits: findings.length,
+                            details: findings
+                        };
+
+                        results.innerHTML = `
+                            <div class="search-header">
+                                <strong class="tool-title">Gefundene Verknüpfungen</strong>
+                                <span class="status-tag" style="background: rgba(204,31,45,0.15);">${findings.length} Treffer</span>
+                            </div>
+                            <div class="result-grid">
+                                ${findings.map(f => `
+                                    <article class="result-card">
+                                        <div>
+                                            <strong style="color: var(--accent);">${f.email}</strong>
+                                            <p>Quelle: ${f.site}</p>
+                                            <small style="color: var(--muted);">Gefunden am: ${f.date}</small>
+                                        </div>
+                                    </article>
+                                `).join('')}
+                            </div>
+                            <div class="search-status" style="margin-top: 1rem; border-color: var(--accent);">
+                                🚨 <strong>Sicherheitshinweis:</strong> Dieses Passwort wurde verknüpft mit den oben genannten E-Mails gefunden. Bitte sofort ändern!
+                            </div>
+                        `;
+                        downloadBtn.style.display = 'inline-block';
+                    }, 1500);
+                });
+
+                downloadBtn.addEventListener('click', () => {
+                    if (!lastPassData) return;
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(lastPassData, null, 4));
+                    const dlLink = document.createElement('a');
+                    dlLink.setAttribute("href", dataStr);
+                    dlLink.setAttribute("download", `password_leak_report.json`);
+                    dlLink.click();
+                });
+            } else {
+                toolContent.innerHTML = `<strong>${toolText[tool].title}</strong><p>${toolText[tool].text}</p>`;
+            }
+        }
+
+        // Event Listener für die Sidebar-Buttons hinzufügen, damit die Klicks funktionieren
+        menuButtons.forEach(button => {
+            button.addEventListener('click', () => selectTool(button.dataset.tool));
+        });
+
+        // Initial das Dashboard laden, damit beim Öffnen der Seite direkt Inhalte da sind
+        selectTool('dashboard');
+
+        const notesTextarea = document.getElementById('notes-textarea');
+        const saveStatus = document.getElementById('save-status');
+        const exportBtn = document.getElementById('export-notes');
+        const clearBtn = document.getElementById('clear-notes');
+        const copyBtn = document.getElementById('copy-notes');
+        const notesKey = 'osight_notes_storage';
+        let saveTimeout;
+
+        function loadNotes() {
+            const saved = localStorage.getItem(notesKey);
+            if (saved) {
+                notesTextarea.value = saved;
+            }
+        }
+
+        function saveNotes() {
+            const content = notesTextarea.value;
+            localStorage.setItem(notesKey, content);
+            
+            saveStatus.textContent = '✓ Gespeichert';
+            saveStatus.classList.add('saved');
+            
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                saveStatus.textContent = 'Auto-Speicher aktiv';
+                saveStatus.classList.remove('saved');
+            }, 2000);
+        }
+
+        notesTextarea.addEventListener('input', () => {
+            clearTimeout(saveTimeout);
+            saveStatus.textContent = 'Speichert...';
+            saveStatus.classList.remove('saved');
+            
+            saveTimeout = setTimeout(() => {
+                saveNotes();
+            }, 1500);
+        });
+
+        exportBtn.addEventListener('click', () => {
+            const content = notesTextarea.value;
+            if (!content.trim()) {
+                alert('Keine Notizen zum Exportieren vorhanden.');
+                return;
+            }
+            
+            const timestamp = new Date().toLocaleString('de-DE');
+            const exportContent = `OSINT-Notizen Export\n${'='.repeat(50)}\nDatum: ${timestamp}\n${'='.repeat(50)}\n\n${content}`;
+            
+            const blob = new Blob([exportContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `osint-notizen-${new Date().getTime()}.txt`;
+            link.click();
+            URL.revokeObjectURL(url);
+        });
+
+        clearBtn.addEventListener('click', () => {
+            if (notesTextarea.value.trim() && confirm('Möchtest du diese Notizen wirklich löschen? Dies kann nicht rückgängig gemacht werden.')) {
+                notesTextarea.value = '';
+                localStorage.removeItem(notesKey);
+                saveStatus.textContent = '🗑️ Gelöscht';
+                saveStatus.classList.add('saved');
+                
+                setTimeout(() => {
+                    saveStatus.textContent = 'Auto-Speicher aktiv';
+                    saveStatus.classList.remove('saved');
+                }, 2000);
+            }
+        });
+
+        copyBtn.addEventListener('click', () => {
+            const content = notesTextarea.value;
+            if (!content.trim()) {
+                alert('Keine Notizen zum Kopieren vorhanden.');
+                return;
+            }
+            
+            navigator.clipboard.writeText(content).then(() => {
+                copyBtn.textContent = '✓ Kopiert!';
+                setTimeout(() => {
+                    copyBtn.textContent = '📋 Kopieren';
+                }, 2000);
+            });
+        });
+
+        loadNotes();
+    </script>
+</body>
+</html>

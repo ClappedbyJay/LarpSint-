@@ -1,0 +1,250 @@
+﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Live Analytics Dashboard</title>
+    <style id="security-lock">
+        body { display: none !important; }
+    </style>
+    <script>
+        // Sofortiger Zugriffsschutz
+        if (!localStorage.getItem('opensight-current-user')) {
+            window.location.href = 'Anmeldung.html';
+        } else {
+            document.documentElement.style.display = 'block';
+        }
+    </script>
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Inter, Arial, sans-serif;
+            background: #08101b;
+            color: #e9f4ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .container {
+            max-width: 960px;
+            width: 100%;
+            background: rgba(13,27,42,0.95);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+        }
+        h1 {
+            margin: 0 0 1rem;
+            font-size: clamp(2rem, 4vw, 3rem);
+        }
+        p {
+            margin: 0 0 1rem;
+            color: #95b2d4;
+            line-height: 1.7;
+        }
+        .note {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 18px;
+            padding: 1.25rem;
+            color: #d4e5ff;
+        }
+        .storage-panel {
+            display: none;
+            margin-top: 1.5rem;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 18px;
+            padding: 1.25rem;
+        }
+        .storage-panel.visible {
+            display: block;
+        }
+        .owner-button {
+            margin-top: 1rem;
+            border: none;
+            border-radius: 999px;
+            padding: 0.95rem 1.5rem;
+            background: rgba(65,216,255,0.12);
+            color: var(--text);
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .storage-panel h2 {
+            margin: 0 0 1rem;
+            font-size: 1.25rem;
+            color: #fff;
+        }
+        .storage-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 0.5rem;
+            align-items: center;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .storage-row:last-child {
+            border-bottom: none;
+        }
+        .storage-row span {
+            color: #95b2d4;
+        }
+        .storage-row code {
+            display: block;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 0.65rem 0.9rem;
+            color: #d4e5ff;
+            word-break: break-all;
+        }
+        .button-clear {
+            margin-top: 1rem;
+            border: none;
+            border-radius: 999px;
+            padding: 0.95rem 1.5rem;
+            background: linear-gradient(135deg, #ff7f50, #ffb86c);
+            color: #06101a;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        a {
+            color: #41d8ff;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Live Analytics Dashboard</h1>
+        <p>Du bist angemeldet und kannst hier deine Analyse starten.</p>
+        <div class="note">
+            <p>Dies ist eine Beispielseite. In einer echten Anwendung würde hier die Live-Analyse-Oberfläche geladen werden.</p>
+        </div>
+        <button class="owner-button" id="ownerAccessButton">Nur für mich</button>
+        <div class="storage-panel" id="storagePanel">
+            <h2>Local Storage</h2>
+            <div class="storage-row">
+                <span>Aktueller Benutzer</span>
+                <code id="currentUser">Ladevorgang...</code>
+            </div>
+            <div class="storage-row">
+                <span>Registrierte Nutzer</span>
+                <code id="userCount">Ladevorgang...</code>
+            </div>
+            <div class="storage-row">
+                <span>Cookie Zustimmung</span>
+                <code id="cookieConsent">Ladevorgang...</code>
+            </div>
+            <div class="storage-row">
+                <span>IP-Adresse</span>
+                <code id="userIp">Ladevorgang...</code>
+            </div>
+            <button class="button-clear" id="clearStorage">Local Storage löschen</button>
+        </div>
+        <div class="note">
+            <p><a href="start.html">Zurück zur Startseite</a></p>
+        </div>
+    </div>
+    <script>
+        // Seite freigeben
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById('security-lock').remove();
+            document.body.style.display = 'flex'; // Flex wegen Zentrierung in dieser Datei
+            autoCleanup();
+        });
+
+        function autoCleanup() {
+            const lastCleanup = localStorage.getItem('larpsint_last_cleanup');
+            const now = Date.now();
+            const ONE_HOUR = 3600000;
+
+            if (!lastCleanup || (now - lastCleanup > ONE_HOUR)) {
+                const keysToKeep = [
+                    'opensight-users',
+                    'opensight-current-user',
+                    'larpsint_locks',
+                    'opensight-last-email',
+                    'osight_notes_storage',
+                    'osight_cookie_consent'
+                ];
+
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (!keysToKeep.includes(key) && key !== 'larpsint_last_cleanup') {
+                        localStorage.removeItem(key);
+                        i--;
+                    }
+                }
+
+                localStorage.setItem('larpsint_last_cleanup', now);
+            }
+        }
+
+        const format = value => value ? value : 'Nicht vorhanden';
+        const currentUserElement = document.getElementById('currentUser');
+        const userCountElement = document.getElementById('userCount');
+        const cookieConsentElement = document.getElementById('cookieConsent');
+        const userIpElement = document.getElementById('userIp');
+
+        const currentUserRaw = localStorage.getItem('opensight-current-user');
+        let currentUserText = 'Nicht angemeldet';
+        if (currentUserRaw) {
+            try {
+                const user = JSON.parse(currentUserRaw);
+                currentUserText = user.email || user.name || 'Unbekannt';
+            } catch {
+                currentUserText = currentUserRaw;
+            }
+        }
+
+        const usersRaw = localStorage.getItem('opensight-users');
+        let userCountText = '0 Benutzer';
+        if (usersRaw) {
+            try {
+                const users = JSON.parse(usersRaw);
+                userCountText = Array.isArray(users) ? `${users.length} Benutzer` : 'Keine gültigen Nutzer';
+            } catch {
+                userCountText = 'Keine gültigen Nutzer';
+            }
+        }
+
+        const ownerAccessButton = document.getElementById('ownerAccessButton');
+        const storagePanel = document.getElementById('storagePanel');
+        const ownerKey = 'opensight-owner-access';
+        const ownerPassword = 'geheim123'; // Ändere hier dein eigenes Passwort
+
+        const updatePanel = () => {
+            currentUserElement.textContent = format(currentUserText);
+            userCountElement.textContent = format(userCountText);
+            cookieConsentElement.textContent = format(localStorage.getItem('osight_cookie_consent'));
+            userIpElement.textContent = format(localStorage.getItem('osight_user_ip'));
+            if (localStorage.getItem(ownerKey) === 'yes') {
+                storagePanel.classList.add('visible');
+                ownerAccessButton.style.display = 'none';
+            }
+        };
+
+        updatePanel();
+
+        ownerAccessButton.addEventListener('click', () => {
+            const secret = prompt('Passwort eingeben:');
+            if (secret === ownerPassword) {
+                localStorage.setItem(ownerKey, 'yes');
+                storagePanel.classList.add('visible');
+                ownerAccessButton.style.display = 'none';
+            } else {
+                alert('Falsches Passwort.');
+            }
+        });
+
+        document.getElementById('clearStorage').addEventListener('click', () => {
+            localStorage.clear();
+            location.href = 'start.html';
+        });
+    </script>
+</body>
+</html>

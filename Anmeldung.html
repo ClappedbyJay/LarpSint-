@@ -1,0 +1,578 @@
+﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Anmeldung | LarpSint</title>
+    <script>
+        const checkLocks = JSON.parse(localStorage.getItem('larpsint_locks') || '{"site":false}');
+        if (checkLocks.site) {
+            document.body.innerHTML = '<div style="background:#000;color:red;height:100vh;display:flex;align-items:center;justify-content:center;font-family:sans-serif;text-align:center;"><div><h1>🔒 SYSTEM GESPERRT</h1><p>Diese Webseite ist zurzeit aufgrund von Wartungsarbeiten deaktiviert.</p></div></div>';
+            window.stop();
+        }
+    </script>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #000000;
+            --surface: rgba(3, 8, 15, 0.85);
+            --surface-2: rgba(10, 25, 41, 0.9);
+            --text: #edf4ff;
+            --muted: #82a8c4;
+            --accent: #cc1f2d;
+            --accent-blue: #41d8ff;
+            --border: rgba(204, 31, 45, 0.15);
+            --shadow: rgba(0, 0, 0, 0.7);
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Inter, Arial, sans-serif;
+            background: radial-gradient(circle at center, rgba(204,31,45,0.08), transparent 25%),
+                        linear-gradient(180deg, #000000 0%, #02050d 100%);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            overflow-x: hidden;
+        }
+
+        /* Radar Background Elements */
+        .radar-backdrop {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 0;
+        }
+        .radar-grid {
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(circle, rgba(204,31,45,0.05) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(204,31,45,0.03) 1px, transparent 1px),
+                              linear-gradient(180deg, rgba(204,31,45,0.03) 1px, transparent 1px);
+            background-size: 80px 80px, 100% 100%, 100% 100%;
+            opacity: 0.4;
+        }
+        .radar-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid rgba(204,31,45,0.15);
+        }
+        .ring-1 { width: 800px; height: 800px; }
+        .ring-2 { width: 500px; height: 500px; }
+        .radar-sweep {
+            position: absolute;
+            width: 1000px;
+            height: 1000px;
+            background: conic-gradient(from 0deg, transparent 0%, rgba(204,31,45,0.15) 10%, transparent 20%);
+            animation: rotate 10s linear infinite;
+            border-radius: 50%;
+        }
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* Lightning Effects */
+        .bolt {
+            position: fixed;
+            top: -10%;
+            width: 2px;
+            height: 120%;
+            opacity: 0;
+            animation: lightning 8s infinite;
+            pointer-events: none;
+        }
+        .bolt span {
+            position: absolute;
+            width: 100%;
+            height: 30%;
+            background: linear-gradient(180deg, transparent, var(--accent-blue), transparent);
+            box-shadow: 0 0 15px var(--accent-blue);
+        }
+        .bolt-1 { left: 15%; animation-delay: 1s; }
+        .bolt-2 { left: 85%; animation-delay: 4s; }
+        @keyframes lightning {
+            0%, 95%, 100% { opacity: 0; }
+            96% { opacity: 0.8; }
+            97% { opacity: 0.2; }
+            98% { opacity: 1; }
+        }
+
+        .page-shell {
+            width: min(1120px, 100%);
+            position: relative;
+            z-index: 1;
+        }
+        .hero-panel {
+            display: grid;
+            grid-template-columns: 1.1fr 0.95fr;
+            gap: 1.5rem;
+            align-items: stretch;
+        }
+        .hero-panel > section {
+            border-radius: 32px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: var(--surface);
+            box-shadow: 0 40px 100px var(--shadow);
+            backdrop-filter: blur(12px);
+        }
+        .hero-panel > section > * {
+            position: relative;
+            z-index: 1;
+        }
+        .brand-panel {
+            padding: 3rem 2.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border: 1px solid var(--border) !important;
+        }
+        .brand-panel .eyebrow {
+            font-size: 0.85rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--accent);
+            display: block;
+            margin-bottom: 1rem;
+        }
+        .brand-panel h1 {
+            margin: 0;
+            font-size: clamp(2.3rem, 4vw, 3.4rem);
+            line-height: 1.02;
+        }
+        .brand-panel p {
+            margin: 1.5rem 0 2rem;
+            max-width: 42rem;
+            color: var(--muted);
+            font-size: 1.05rem;
+            line-height: 1.8;
+        }
+        .feature-list {
+            display: grid;
+            gap: 0.85rem;
+        }
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.9rem;
+            padding: 1rem 1.15rem;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .feature-item strong {
+            display: block;
+            margin-bottom: 0.25rem;
+            color: var(--text);
+        }
+        .feature-item span {
+            color: var(--muted);
+            font-size: 0.95rem;
+            line-height: 1.65;
+        }
+        .auth-card {
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            justify-content: center;
+            background: var(--surface-2);
+            border-radius: 32px;
+            border: 1px solid rgba(65, 216, 255, 0.15) !important;
+        }
+        .auth-top {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .auth-top h2 {
+            margin: 0;
+            font-size: clamp(1.95rem, 4vw, 2.4rem);
+        }
+        .auth-top p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.75;
+        }
+        .tabs {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.65rem;
+            margin: 0.5rem 0 1.3rem;
+        }
+        .tab {
+            min-height: 52px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.04);
+            color: var(--muted);
+            display: grid;
+            place-items: center;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+        }
+        .tab:hover {
+            transform: translateY(-1px);
+        }
+        .tab.active {
+            background: linear-gradient(135deg, rgba(91,210,255,0.18), rgba(134,245,255,0.12));
+            color: var(--text);
+        }
+        form {
+            width: 100%;
+            display: grid;
+            gap: 1rem;
+        }
+        .form-group {
+            display: grid;
+            gap: 0.5rem;
+        }
+        .remember-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text);
+        }
+        label {
+            font-size: 0.95rem;
+            color: var(--muted);
+        }
+        input {
+            width: 100%;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1rem 1.1rem;
+            background: rgba(255,255,255,0.04);
+            color: var(--text);
+            font-size: 1rem;
+        }
+        input::placeholder {
+            color: rgba(237,244,255,0.55);
+        }
+        input:focus {
+            outline: none;
+            border-color: rgba(91,210,255,0.55);
+            box-shadow: 0 0 0 4px rgba(91,210,255,0.1);
+        }
+        .button-primary {
+            width: 100%;
+            border: none;
+            border-radius: 999px;
+            padding: 1rem 1.2rem;
+            background: linear-gradient(135deg, #72e4ff 0%, #4db6ff 100%);
+            color: #06101a;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 20px 45px rgba(41,141,191,0.24);
+        }
+        .button-primary:hover {
+            transform: translateY(-1px);
+        }
+        .forgot-password {
+            text-align: center;
+            margin-top: 0.35rem;
+        }
+        .forgot-password a {
+            color: var(--accent-strong);
+            text-decoration: none;
+            font-size: 0.95rem;
+        }
+        /* Passwort-Sichtbarkeit Toggle */
+        .password-wrapper {
+            position: relative;
+            width: 100%;
+            display: flex;
+            align-items: center;
+        }
+        .password-wrapper input {
+            padding-right: 3.5rem !important;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 1.2rem;
+            z-index: 10;
+            padding: 0;
+            line-height: 1;
+            box-shadow: none;
+            outline: none;
+        }
+        .message {
+            min-height: 1.4rem;
+            color: #8eda8d;
+            text-align: center;
+            font-size: 0.95rem;
+        }
+        @media (max-width: 860px) {
+            .hero-panel {
+                grid-template-columns: 1fr;
+            }
+            .hero-panel > section {
+                min-height: auto;
+            }
+        }
+
+        /* Kontakt Button Styling */
+        .header-top {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 1.5rem;
+        }
+        .btn-ghost {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(65, 216, 255, 0.2);
+            color: var(--accent-blue);
+            padding: 0.7rem 1.4rem;
+            border-radius: 999px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+        }
+        .btn-ghost:hover {
+            background: rgba(65, 216, 255, 0.15);
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="radar-backdrop">
+        <div class="radar-grid"></div>
+        <div class="radar-ring ring-1"></div>
+        <div class="radar-ring ring-2"></div>
+        <div class="radar-sweep"></div>
+    </div>
+    <div class="bolt bolt-1"><span></span></div>
+    <div class="bolt bolt-2"><span></span></div>
+
+    <div class="page-shell">
+        <div class="header-top">
+            <a href="kontakt.html?from=login" class="btn-ghost">Kontakt & Support</a>
+        </div>
+        <div class="hero-panel">
+            <section class="brand-panel">
+                <div>
+                    <span class="eyebrow">LarpSint</span>
+                    <h1>Osint Für Beginner</h1>
+                    <p>Erstelle ein Konto oder melde dich an, um direkt zur OSINT-Dashboard-Oberfläche zu gelangen. LarpSint verbindet Webrecherche, Profilprüfungen und sichere Auswertung in einem modernen Interface.</p>
+                </div>
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <strong>Sofort nutzbar</strong>
+                        <span>Registrierung in wenigen Schritten, ohne Backend-Komplexität.</span>
+                    </div>
+                    <div class="feature-item">
+                        <strong>Datensicherheit</strong>
+                        <span>Alles bleibt lokal im Browser, keine externen Datenlecks.</span>
+                    </div>
+                    <div class="feature-item">
+                        <strong>Modernes Design</strong>
+                        <span>Ein dunkles, klar strukturiertes Layout mit sanften Farbverläufen.</span>
+                    </div>
+                </div>
+            </section>
+            <section class="auth-card">
+                <div class="auth-top">
+                    <h2 id="page-title">Anmelden</h2>
+                    <p id="page-desc">Melde dich mit Email und Passwort an, um die Live-Analyse zu starten.</p>
+                </div>
+                <div class="tabs">
+                    <div class="tab active" data-mode="login">Anmelden</div>
+                    <div class="tab" data-mode="register">Registrieren</div>
+                </div>
+                <form id="auth-form">
+                    <div class="form-group" id="name-group" style="display:none;">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" placeholder="Max Mustermann">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email-Adresse</label>
+                        <input type="email" id="email" required placeholder="deine@adresse.de">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Passwort</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="password" required placeholder="Mindestens 8 Zeichen">
+                            <button type="button" class="toggle-password" id="toggle-password-btn">👁️</button>
+                        </div>
+                    </div>
+                    <div class="form-group remember-group">
+                        <label><input type="checkbox" id="remember-me" checked> Eingeloggt speichern</label>
+                    </div>
+                    <button type="submit" class="button-primary" id="submit-button">Anmelden</button>
+                    <div class="forgot-password"><a href="reset-password.html">Passwort vergessen?</a></div>
+                    <div class="message" id="form-message"></div>
+                </form>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            autoCleanup();
+        });
+
+        function autoCleanup() {
+            const lastCleanup = localStorage.getItem('larpsint_last_cleanup');
+            const now = Date.now();
+            const ONE_HOUR = 3600000;
+
+            if (!lastCleanup || (now - lastCleanup > ONE_HOUR)) {
+                const keysToKeep = [
+                    'opensight-users',
+                    'opensight-current-user',
+                    'larpsint_locks',
+                    'opensight-last-email',
+                    'osight_notes_storage',
+                    'osight_cookie_consent'
+                ];
+
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (!keysToKeep.includes(key) && key !== 'larpsint_last_cleanup') {
+                        localStorage.removeItem(key);
+                        i--;
+                    }
+                }
+
+                localStorage.setItem('larpsint_last_cleanup', now);
+                console.log("System-Bereinigung durchgeführt.");
+            }
+        }
+
+        const tabs = document.querySelectorAll('.tab');
+        const pageTitle = document.getElementById('page-title');
+        const pageDesc = document.getElementById('page-desc');
+        const nameGroup = document.getElementById('name-group');
+        const submitButton = document.getElementById('submit-button');
+        const authForm = document.getElementById('auth-form');
+        const formMessage = document.getElementById('form-message');
+        const rememberCheckbox = document.getElementById('remember-me');
+        const emailInput = document.getElementById('email');
+        let mode = 'login';
+
+        // Passwort Sichtbarkeit umschalten
+        document.getElementById('toggle-password-btn').addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            this.textContent = isPassword ? '🙈' : '👁️';
+        });
+
+        function saveLastEmail(email) {
+            localStorage.setItem('opensight-last-email', email);
+        }
+
+        function getLastEmail() {
+            return localStorage.getItem('opensight-last-email') || '';
+        }
+
+        function getUsers() {
+            const raw = localStorage.getItem('opensight-users');
+            return raw ? JSON.parse(raw) : [];
+        }
+
+        function saveUsers(users) {
+            localStorage.setItem('opensight-users', JSON.stringify(users));
+        }
+
+        function saveCurrentUser(user) {
+            const storedUser = {
+                email: user.email,
+                name: user.name,
+                lastLogin: new Date().toISOString()
+            };
+            localStorage.setItem('opensight-current-user', JSON.stringify(storedUser));
+            saveLastEmail(user.email);
+        }
+
+        function getCurrentUser() {
+            const raw = localStorage.getItem('opensight-current-user');
+            return raw ? JSON.parse(raw) : null;
+        }
+
+        function setMode(newMode) {
+            mode = newMode;
+            tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.mode === mode));
+            if (mode === 'login') {
+                pageTitle.textContent = 'Anmelden';
+                pageDesc.textContent = 'Melde dich mit Email und Passwort an, um die Live-Analyse zu starten.';
+                submitButton.textContent = 'Anmelden';
+                nameGroup.style.display = 'none';
+            } else {
+                pageTitle.textContent = 'Registrieren';
+                pageDesc.textContent = 'Lege ein neues Konto mit Email und Passwort an.';
+                submitButton.textContent = 'Registrieren';
+                nameGroup.style.display = 'block';
+            }
+            formMessage.textContent = '';
+        }
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => setMode(tab.dataset.mode));
+        });
+
+        authForm.addEventListener('submit', event => {
+            event.preventDefault();
+            const email = document.getElementById('email').value.trim().toLowerCase();
+            const password = document.getElementById('password').value;
+            const name = document.getElementById('name').value.trim();
+
+            if (!email || !password) {
+                formMessage.style.color = '#f18787';
+                formMessage.textContent = 'Bitte Email und Passwort eingeben.';
+                return;
+            }
+            if (password.length < 8) {
+                formMessage.style.color = '#f18787';
+                formMessage.textContent = 'Das Passwort muss mindestens 8 Zeichen lang sein.';
+                return;
+            }
+
+            const users = getUsers();
+
+            if (mode === 'register') {
+                if (users.find(u => u.email === email)) {
+                    formMessage.style.color = '#f18787';
+                    formMessage.textContent = 'Ein Konto mit dieser Email existiert bereits.';
+                    return;
+                }
+
+                users.push({ email, password, name: name || email });
+                saveUsers(users);
+                formMessage.style.color = '#8eda8d';
+                formMessage.textContent = 'Registrierung erfolgreich! Bitte melde dich an.';
+                setMode('login');
+            } else {
+                const user = users.find(u => u.email === email && u.password === password);
+                if (user) {
+                    saveCurrentUser(user);
+                    if (rememberCheckbox.checked) saveLastEmail(email);
+                    
+                    formMessage.style.color = '#8eda8d';
+                    formMessage.textContent = 'Login erfolgreich! Weiterleitung...';
+                    setTimeout(() => { window.location.href = 'Osintstart.html'; }, 1000);
+                } else {
+                formMessage.style.color = '#f18787';
+                    formMessage.textContent = 'Email oder Passwort falsch.';
+                }
+            }
+        });
+
+        setMode('login');
+        emailInput.value = getLastEmail();
+    </script>
