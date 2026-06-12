@@ -7,6 +7,8 @@ You launch the tool by running the start file.
 For the best experience, use
 Visual Studio Code.
 
+the Admin passwort is: geheim123 or LarpSint2026
+
 Once you've done that, go to `start.html` and debug it.
 
 From there, you can register using a fake email and password to access the site.
